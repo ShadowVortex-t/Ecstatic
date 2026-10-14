@@ -6,7 +6,7 @@ Ecstatic is an LOD mod designed to be as efficient and as close to vanilla perfo
 
 I'm fairly burnt out, expect updates in the next couple of weeks!
 
-CC BY NC SA 4.0 Liscence, source at [https://github.com/Wizardtastic/Ecstatic](https://github.com/Wizardtastic/Ecstatic)
+CC BY NC SA 4.0 License, source at [https://github.com/Wizardtastic/Ecstatic](https://github.com/Wizardtastic/Ecstatic)
 
 To get the best possible experience, I would highly suggest turning your vanilla render distance up to 24 from the default 12, LODs really don't look that great up close
 
@@ -35,7 +35,7 @@ Does Ecstatic work with Sodium/Embeddium and other similar performance mods?
 
 **Answer:**
 
-**Yes**. It is fully compatable with Sodium, while not required is heavily reccomended to get your performance as high as possible
+**Yes**. It is fully compatible with Sodium, while not required is heavily recommended to get your performance as high as possible
 
 ***
 
@@ -45,7 +45,7 @@ How high is Ecstatic's render distance by default?
 
 **Answer:**
 
-Ecstatic's render distance by default (100% render distance) is **144 chunks** additionally generated on top of vanilla render distance. It can be raised up to 200% (**292 chunks**), and lowered to 25% (**38 chunks**). Keeping your render distance at 100% is reccomended at the moment, performance loss scales exponentially.
+Ecstatic's render distance by default (100% render distance) is **144 chunks** additionally generated on top of vanilla render distance. It can be raised up to 200% (**292 chunks**), and lowered to 25% (**38 chunks**). Keeping your render distance at 100% is recommended at the moment, performance loss scales exponentially.
 
 ***
 
@@ -55,7 +55,7 @@ Ecstatic's render distance by default (100% render distance) is **144 chunks** a
 
 **Answer:**
 
-Ecstatic is **fully compatible with Tectonic** since it doesn't add any new biomes. **Terralith does not have full compatability**. Biomes may look the wrong color or have the wrong trees at a distance, this goes for all mods introducing new biomes.
+Ecstatic is **fully compatible with Tectonic** since it doesn't add any new biomes. **Terralith does not have full compatibility**. Biomes may look the wrong color or have the wrong trees at a distance, this goes for all mods introducing new biomes.
 
 ***
 
@@ -103,7 +103,7 @@ At the moment the mod is still in beta. For full release we are working on
 *   Full shader support through Iris/Oculus
 *   Server support
 *   Sable & Create Aeronautics integration 
-*   Incresed render distance VIA flat Terrain (Up to 1k chunks potentially, basically just doing what farplanetwo does as another LOD)
+*   Increased render distance VIA flat Terrain (Up to 1k chunks potentially, basically just doing what farplanetwo does as another LOD)
 *   Zooming on terrain promotes it to higher quality terrain
 *   French translation 
 *   Better tree system
