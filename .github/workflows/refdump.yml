@@ -29,12 +29,19 @@ jobs:
           set +e
           curl -sL -o vf.jar https://repo1.maven.org/maven2/org/vineflower/vineflower/1.11.1/vineflower-1.11.1.jar
           mkdir -p in out
-          for jar in mc.jar "$(cat nf.txt)"; do
+          for jar in "$PWD/mc.jar" "$(cat nf.txt)"; do
             [ -f "$jar" ] || continue
-            while read -r p; do [ -z "$p" ] && continue; (cd in && unzip -qo "../$jar" "$p*" 2>/dev/null || true); done < ci/refdump.txt
+            while read -r p; do [ -z "$p" ] && continue; (cd in && unzip -qo "$jar" "$p*" 2>/dev/null || true); done < ci/refdump.txt
           done
           find in -name '*.class' | wc -l
           java -jar vf.jar -log=WARN -dgs=1 -hdc=0 -asc=1 -rsy=1 -lit=1 -e=mc.jar in out 2>&1 | tail -5 || true
+          mkdir -p out/res
+          for j in $(find ~/.gradle "$PWD/build" -name '*.jar' -size +3M 2>/dev/null); do
+            if unzip -l "$j" 2>/dev/null | grep -q 'assets/minecraft/shaders/'; then
+              (cd out/res && unzip -qo "$j" 'assets/minecraft/shaders/*' 'assets/minecraft/pipelines/*' 'assets/minecraft/post_effect/*' 'assets/minecraft/lang/en_us.json' 2>/dev/null || true)
+              echo "res from $j" >> out/RES_SOURCES.txt
+            fi
+          done
           unzip -l mc.jar | awk '{print $4}' | grep class$ > out/ALL_CLASSES_mc.txt || true
           [ -f "$(cat nf.txt)" ] && unzip -l "$(cat nf.txt)" | awk '{print $4}' | grep class$ > out/ALL_CLASSES_nf.txt || true
           find out -name '*.java' | wc -l

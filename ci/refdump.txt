@@ -1,8 +1,16 @@
 com/mojang/blaze3d
+com/mojang/renderpearl/api
+com/mojang/renderpearl/frontend
 net/minecraft/client/renderer
-net/minecraft/client/gui/GuiGraphics
+net/minecraft/client/gui
 net/minecraft/client/Camera
 net/minecraft/client/KeyMapping
+net/minecraft/client/Minecraft
 net/minecraft/resources
+net/minecraft/world/level/chunk/PalettedContainer
+net/minecraft/world/level/chunk/Strategy
+net/minecraft/client/resources/model
+net/minecraft/client/renderer/block/dispatch
 net/neoforged/neoforge/client/event
-# rerun
+net/neoforged/neoforge/client/ClientHooks
+net/neoforged/neoforge/client/fog
