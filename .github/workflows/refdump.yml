@@ -26,11 +26,12 @@ jobs:
           NF=$(find ~/.gradle -name "neoforge-26.3*.jar" ! -name "*sources*" | head -1); echo "NF=$NF"; echo "$NF" > nf.txt
       - name: Decompile requested prefixes
         run: |
+          set +e
           curl -sL -o vf.jar https://repo1.maven.org/maven2/org/vineflower/vineflower/1.11.1/vineflower-1.11.1.jar
           mkdir -p in out
           for jar in mc.jar "$(cat nf.txt)"; do
             [ -f "$jar" ] || continue
-            while read -r p; do [ -z "$p" ] && continue; (cd in && unzip -qo "../$jar" "$p*" 2>/dev/null); done < ci/refdump.txt
+            while read -r p; do [ -z "$p" ] && continue; (cd in && unzip -qo "../$jar" "$p*" 2>/dev/null || true); done < ci/refdump.txt
           done
           find in -name '*.class' | wc -l
           java -jar vf.jar -log=WARN -dgs=1 -hdc=0 -asc=1 -rsy=1 -lit=1 -e=mc.jar in out 2>&1 | tail -5 || true
