@@ -18,7 +18,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Compile
         continue-on-error: true
-        run: ./gradlew compileJava --no-daemon --stacktrace > build.log 2>&1
+        run: chmod +x gradlew && ./gradlew compileJava --no-daemon --stacktrace > build.log 2>&1
       - name: Build jar
         continue-on-error: true
         run: ./gradlew build --no-daemon > jar.log 2>&1
