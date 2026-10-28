@@ -52,7 +52,7 @@ public class Ecstatic {
             ChunkGenerator generator = overworld.getChunkSource().getGenerator();
             RandomState randomState = overworld.getChunkSource().randomState();
             Registry<Biome> biomeRegistry = overworld.registryAccess().lookupOrThrow(Registries.BIOME);
-            LevelHeightAccessor heightAccessor = new FixedHeightAccessor(overworld.getMinBuildHeight(), overworld.getMaxBuildHeight());
+            LevelHeightAccessor heightAccessor = new FixedHeightAccessor(overworld.getMinY(), overworld.getMaxY() + 1);
             Thread startupThread = new Thread(
                 () -> {
                     try {

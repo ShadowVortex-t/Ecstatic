@@ -107,6 +107,6 @@ final class LodTerrainColorScreen extends Screen {
     }
 
     public void onClose() {
-        Minecraft.getInstance().setScreen(this.parent);
+        Minecraft.getInstance().gui.setScreen(this.parent);
     }
 }

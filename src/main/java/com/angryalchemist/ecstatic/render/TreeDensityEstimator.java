@@ -11,7 +11,7 @@ import net.minecraft.util.Mth;
 import net.minecraft.util.valueproviders.IntProvider;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.levelgen.GenerationStep.Decoration;
-import net.minecraft.world.level.levelgen.feature.Feature;
+import net.minecraft.world.level.levelgen.feature.TreeFeature;
 import net.minecraft.world.level.levelgen.placement.CountPlacement;
 import net.minecraft.world.level.levelgen.placement.PlacedFeature;
 import net.minecraft.world.level.levelgen.placement.PlacementModifier;
@@ -49,7 +49,7 @@ final class TreeDensityEstimator {
 
         for (Holder<PlacedFeature> placedHolder : steps.get(stepIndex)) {
             PlacedFeature placedFeature = (PlacedFeature)placedHolder.value();
-            boolean isTree = placedFeature.getFeatures().anyMatch(configured -> configured.feature() == Feature.TREE);
+            boolean isTree = placedFeature.getFeatures().anyMatch(configured -> configured.value() instanceof TreeFeature);
             if (isTree) {
                 anyTree = true;
                 expectedTreesPerChunk += expectedCount(placedFeature);
@@ -71,7 +71,7 @@ final class TreeDensityEstimator {
             if (COUNT_PLACEMENT_COUNT_FIELD != null && modifier instanceof CountPlacement) {
                 try {
                     IntProvider provider = (IntProvider)COUNT_PLACEMENT_COUNT_FIELD.get(modifier);
-                    expected *= (provider.getMinValue() + provider.getMaxValue()) / 2.0F;
+                    expected *= (provider.minInclusive() + provider.maxInclusive()) / 2.0F;
                 } catch (ReflectiveOperationException | ClassCastException var5) {
                 }
             } else if (RARITY_FILTER_CHANCE_FIELD != null && modifier instanceof RarityFilter) {

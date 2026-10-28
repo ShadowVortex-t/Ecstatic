@@ -27,7 +27,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.PalettedContainer;
 import net.minecraft.world.level.chunk.PalettedContainerRO;
-import net.minecraft.world.level.chunk.PalettedContainer.Strategy;
+import net.minecraft.world.level.chunk.Strategy;
 import net.minecraft.world.level.chunk.storage.RegionFile;
 import net.minecraft.world.level.chunk.storage.RegionStorageInfo;
 import net.minecraft.world.level.Level;
@@ -38,7 +38,7 @@ public final class SavedChunkAccess implements AutoCloseable {
     private static final int BIOME_SECTION_SIZE = 4;
     private static final String INVALID_STRUCTURE_ID = "INVALID";
     private static final Codec<PalettedContainer<BlockState>> BLOCK_STATE_CODEC = PalettedContainer.codecRW(
-        Block.BLOCK_STATE_REGISTRY, BlockState.CODEC, Strategy.SECTION_STATES, Blocks.AIR.defaultBlockState()
+        BlockState.CODEC, Strategy.createForBlockStates(Block.BLOCK_STATE_REGISTRY), Blocks.AIR.defaultBlockState()
     );
     private final Path regionFolder;
     private final Codec<PalettedContainerRO<Holder<Biome>>> biomeCodec;
@@ -50,7 +50,7 @@ public final class SavedChunkAccess implements AutoCloseable {
     public SavedChunkAccess(Path dimensionRoot, Registry<Biome> biomeRegistry) {
         this.regionFolder = dimensionRoot.resolve("region");
         this.biomeCodec = PalettedContainer.codecRO(
-            biomeRegistry.asHolderIdMap(), biomeRegistry.holderByNameCodec(), Strategy.SECTION_BIOMES, biomeRegistry.getHolderOrThrow(Biomes.PLAINS)
+            biomeRegistry.holderByNameCodec(), Strategy.createForBiomes(biomeRegistry.asHolderIdMap()), biomeRegistry.getOrThrow(Biomes.PLAINS)
         );
     }
 
@@ -69,7 +69,7 @@ public final class SavedChunkAccess implements AutoCloseable {
             return null;
         }
 
-        CompoundTag starts = chunkTag.getCompound("structures").getCompound("starts");
+        CompoundTag starts = chunkTag.getCompoundOrEmpty("structures").getCompoundOrEmpty("starts");
         Set<String> ids = new HashSet<>();
         int minX = Integer.MAX_VALUE;
         int minY = Integer.MAX_VALUE;
@@ -78,15 +78,15 @@ public final class SavedChunkAccess implements AutoCloseable {
         int maxY = Integer.MIN_VALUE;
         int maxZ = Integer.MIN_VALUE;
 
-        for (String key : starts.getAllKeys()) {
-            CompoundTag start = starts.getCompound(key);
-            String id = start.getString("id");
+        for (String key : starts.keySet()) {
+            CompoundTag start = starts.getCompoundOrEmpty(key);
+            String id = start.getStringOr("id", "");
             if (!id.isEmpty() && !"INVALID".equals(id)) {
                 ids.add(id);
-                ListTag children = start.getList("Children", 10);
+                ListTag children = start.getListOrEmpty("Children");
 
                 for (int i = 0; i < children.size(); i++) {
-                    int[] bb = children.getCompound(i).getIntArray("BB");
+                    int[] bb = children.getCompoundOrEmpty(i).getIntArray("BB").orElse(new int[0]);
                     if (bb.length == 6) {
                         minX = Math.min(minX, bb[0]);
                         minY = Math.min(minY, bb[1]);
@@ -121,11 +121,11 @@ public final class SavedChunkAccess implements AutoCloseable {
             return Set.of();
         }
 
-        CompoundTag starts = chunkTag.getCompound("structures").getCompound("starts");
+        CompoundTag starts = chunkTag.getCompoundOrEmpty("structures").getCompoundOrEmpty("starts");
         Set<String> ids = new HashSet<>();
 
-        for (String key : starts.getAllKeys()) {
-            String id = starts.getCompound(key).getString("id");
+        for (String key : starts.keySet()) {
+            String id = starts.getCompoundOrEmpty(key).getStringOr("id", "");
             if (!id.isEmpty() && !"INVALID".equals(id)) {
                 ids.add(id);
             }
@@ -155,7 +155,7 @@ public final class SavedChunkAccess implements AutoCloseable {
     }
 
     private SavedChunkAccess.ChunkSections chunkSections(int chunkX, int chunkZ) {
-        long key = ChunkPos.asLong(chunkX, chunkZ);
+        long key = ChunkPos.pack(chunkX, chunkZ);
         if (this.sectionsCache.containsKey(key)) {
             return this.sectionsCache.get(key);
         }
@@ -171,7 +171,7 @@ public final class SavedChunkAccess implements AutoCloseable {
     }
 
     private CompoundTag rawTag(int chunkX, int chunkZ) {
-        long key = ChunkPos.asLong(chunkX, chunkZ);
+        long key = ChunkPos.pack(chunkX, chunkZ);
         if (this.rawTagCache.containsKey(key)) {
             return this.rawTagCache.get(key);
         }
@@ -204,7 +204,7 @@ public final class SavedChunkAccess implements AutoCloseable {
     private RegionFile openRegionFile(int chunkX, int chunkZ) {
         int regionX = chunkX >> 5;
         int regionZ = chunkZ >> 5;
-        long key = ChunkPos.asLong(regionX, regionZ);
+        long key = ChunkPos.pack(regionX, regionZ);
         RegionFile cached = this.openRegionFiles.get(key);
         if (cached != null) {
             return cached;
@@ -288,14 +288,14 @@ public final class SavedChunkAccess implements AutoCloseable {
         static SavedChunkAccess.ChunkSections parse(CompoundTag chunkTag, Codec<PalettedContainerRO<Holder<Biome>>> biomeCodec) {
             Map<Integer, PalettedContainer<BlockState>> blocksByY = new HashMap<>();
             Map<Integer, PalettedContainerRO<Holder<Biome>>> biomesByY = new HashMap<>();
-            ListTag sectionList = chunkTag.getList("sections", 10);
+            ListTag sectionList = chunkTag.getListOrEmpty("sections");
 
             for (int i = 0; i < sectionList.size(); i++) {
-                CompoundTag sectionTag = sectionList.getCompound(i);
-                int sectionY = sectionTag.getByte("Y");
-                if (sectionTag.contains("block_states", 10)) {
+                CompoundTag sectionTag = sectionList.getCompoundOrEmpty(i);
+                int sectionY = sectionTag.getByteOr("Y", (byte)0);
+                if (sectionTag.contains("block_states")) {
                     PalettedContainer<BlockState> blockContainer = (PalettedContainer<BlockState>)SavedChunkAccess.BLOCK_STATE_CODEC
-                        .parse(NbtOps.INSTANCE, sectionTag.getCompound("block_states"))
+                        .parse(NbtOps.INSTANCE, sectionTag.getCompoundOrEmpty("block_states"))
                         .result()
                         .orElse(null);
                     if (blockContainer != null) {
@@ -303,9 +303,9 @@ public final class SavedChunkAccess implements AutoCloseable {
                     }
                 }
 
-                if (sectionTag.contains("biomes", 10)) {
+                if (sectionTag.contains("biomes")) {
                     PalettedContainerRO<Holder<Biome>> biomeContainer = (PalettedContainerRO<Holder<Biome>>)biomeCodec.parse(
-                            NbtOps.INSTANCE, sectionTag.getCompound("biomes")
+                            NbtOps.INSTANCE, sectionTag.getCompoundOrEmpty("biomes")
                         )
                         .result()
                         .orElse(null);

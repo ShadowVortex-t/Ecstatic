@@ -133,13 +133,13 @@ public final class LodSettingsScreen extends Screen {
         fogIntensity.visible = y >= viewportTop && y + WIDGET_HEIGHT <= viewportBottom;
         this.addRenderableWidget(fogIntensity);
         y += ROW_STRIDE;
-        Button lightingButton = Button.builder(Component.literal("Lighting..."), b -> Minecraft.getInstance().setScreen(new LodLightingScreen(this)))
+        Button lightingButton = Button.builder(Component.literal("Lighting..."), b -> Minecraft.getInstance().gui.setScreen(new LodLightingScreen(this)))
             .bounds(centerX - 130, y, CHECKBOX_WIDTH, WIDGET_HEIGHT)
             .build();
         lightingButton.visible = y >= viewportTop && y + WIDGET_HEIGHT <= viewportBottom;
         this.addRenderableWidget(lightingButton); // technically a debug menu, average user should never need to access this
         y += 32;
-        Button debugButton = Button.builder(Component.literal("Debug Settings..."), b -> Minecraft.getInstance().setScreen(new LodDebugSettingsScreen(this)))
+        Button debugButton = Button.builder(Component.literal("Debug Settings..."), b -> Minecraft.getInstance().gui.setScreen(new LodDebugSettingsScreen(this)))
             .bounds(centerX - 130, y, CHECKBOX_WIDTH, WIDGET_HEIGHT)
             .build();
         debugButton.visible = y >= viewportTop && y + WIDGET_HEIGHT <= viewportBottom;

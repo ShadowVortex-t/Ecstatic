@@ -23,6 +23,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
+import net.minecraft.client.renderer.state.level.CameraEntityRenderState;
 import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.client.renderer.state.level.LevelRenderState;
 import net.minecraft.client.Minecraft;
@@ -109,11 +110,11 @@ public final class LodRenderer {
 
         float partialTick = levelState.worldPartialTicks;
         Matrix4f modelViewMatrix = new Matrix4f();
-        applyVanillaCameraBob(modelViewMatrix, partialTick);
+        applyVanillaCameraBob(modelViewMatrix, camera);
         modelViewMatrix.mul(camera.viewRotationMatrix);
         Matrix4f rotationOnlyMatrix = new Matrix4f(modelViewMatrix);
         modelViewMatrix.translate(-((float) cameraPos.x), -((float) cameraPos.y), -((float) cameraPos.z));
-        float dayFraction = clamp01((clientLevel.getSkyDarken(partialTick) - 0.2F) / 0.8F);
+        float dayFraction = clamp01((clientLevel.getSkyDarken() - 0.2F) / 0.8F);
         float night = LodSettingsConfig.get().nightBrightness();
         float day = LodSettingsConfig.get().dayBrightness();
         float brightness = night + (day - night) * dayFraction;
@@ -221,37 +222,42 @@ public final class LodRenderer {
         return Math.max(0.0F, Math.min(1.0F, v));
     }
 
-    private static void applyVanillaCameraBob(Matrix4f modelViewMatrix, float partialTick) {
-        applyHurtBob(modelViewMatrix, partialTick);
+    private static void applyVanillaCameraBob(Matrix4f modelViewMatrix, CameraRenderState camera) {
+        applyHurtBob(modelViewMatrix, camera);
         if (Minecraft.getInstance().options.bobView().get()) {
-            applyViewBob(modelViewMatrix, partialTick);
+            applyViewBob(modelViewMatrix, camera);
         }
     }
 
-    private static void applyHurtBob(Matrix4f modelViewMatrix, float partialTick) {
-        if (Minecraft.getInstance().getCameraEntity() instanceof LivingEntity livingEntity) {
-            if (livingEntity.isDeadOrDying()) {
-                float deathTime = Math.min(livingEntity.deathTime + partialTick, 20.0F);
-                modelViewMatrix.rotate(Axis.ZP.rotationDegrees(40.0F - 8000.0F / (deathTime + 200.0F)));
-            }
-
-            float hurtTime = livingEntity.hurtTime - partialTick;
-            if (!(hurtTime < 0.0F)) {
-                hurtTime /= livingEntity.hurtDuration;
-                hurtTime = Mth.sin(hurtTime * hurtTime * hurtTime * hurtTime * (float) Math.PI);
-                float hurtDir = livingEntity.getHurtDir();
-                modelViewMatrix.rotate(Axis.YP.rotationDegrees(-hurtDir));
-                modelViewMatrix.rotate(Axis.ZP.rotationDegrees(-hurtTime * 14.0F));
-                modelViewMatrix.rotate(Axis.YP.rotationDegrees(hurtDir));
-            }
+    private static void applyHurtBob(Matrix4f modelViewMatrix, CameraRenderState camera) {
+        CameraEntityRenderState entity = camera.entityRenderState;
+        if (!entity.isLiving) {
+            return;
         }
+
+        float hurtTime = entity.hurtTime;
+        if (entity.isDeadOrDying) {
+            float deathTime = Math.min(entity.deathTime, 20.0F);
+            modelViewMatrix.rotate(Axis.ZP.rotationDegrees(40.0F - 8000.0F / (deathTime + 200.0F)));
+        }
+
+        if (hurtTime < 0.0F || entity.preventFlinch) {
+            return;
+        }
+
+        hurtTime /= entity.hurtDuration;
+        hurtTime = Mth.sin(hurtTime * hurtTime * hurtTime * hurtTime * (float) Math.PI);
+        float hurtDir = entity.hurtDir;
+        modelViewMatrix.rotate(Axis.YP.rotationDegrees(-hurtDir));
+        modelViewMatrix.rotate(Axis.ZP.rotationDegrees((float) (-hurtTime * 14.0 * Minecraft.getInstance().options.damageTiltStrength().get())));
+        modelViewMatrix.rotate(Axis.YP.rotationDegrees(hurtDir));
     }
 
-    private static void applyViewBob(Matrix4f modelViewMatrix, float partialTick) {
-        if (Minecraft.getInstance().getCameraEntity() instanceof Player player) {
-            float var6 = player.walkDist - player.walkDistO;
-            float bobPhase = -(player.walkDist + var6 * partialTick);
-            float bobAmount = Mth.lerp(partialTick, player.oBob, player.bob);
+    private static void applyViewBob(Matrix4f modelViewMatrix, CameraRenderState camera) {
+        CameraEntityRenderState entity = camera.entityRenderState;
+        if (entity.isPlayer) {
+            float bobPhase = entity.backwardsInterpolatedWalkDistance;
+            float bobAmount = entity.bob;
             modelViewMatrix.translate(Mth.sin(bobPhase * (float) Math.PI) * bobAmount * 0.5F, -Math.abs(Mth.cos(bobPhase * (float) Math.PI) * bobAmount), 0.0F);
             modelViewMatrix.rotate(Axis.ZP.rotationDegrees(Mth.sin(bobPhase * (float) Math.PI) * bobAmount * 3.0F));
             modelViewMatrix.rotate(Axis.XP.rotationDegrees(Math.abs(Mth.cos(bobPhase * (float) Math.PI - 0.2F) * bobAmount) * 5.0F));
@@ -268,7 +274,7 @@ public final class LodRenderer {
         Constants.LOG
                 .info(
                         "Ecstatic renderer: client render distance={} chunks, graphics mode={}, vanilla far clip plane ~= {} blocks (LOD rings beyond this are frustum-clipped)",
-                        renderDistanceChunks, Minecraft.getInstance().options.graphicsMode().get(), farPlaneBlocks);
+                        renderDistanceChunks, Minecraft.getInstance().options.cloudStatus().get(), farPlaneBlocks);
     }
 
     private static float extendedFarPlaneBlocks(int clientRenderDistanceChunks) {

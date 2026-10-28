@@ -25,7 +25,7 @@ import net.minecraft.world.level.levelgen.RandomState;
 import net.minecraft.world.level.levelgen.SurfaceSystem;
 import net.minecraft.world.level.levelgen.DensityFunction.SinglePointContext;
 import net.minecraft.world.level.levelgen.GenerationStep.Decoration;
-import net.minecraft.world.level.levelgen.feature.Feature;
+import net.minecraft.world.level.levelgen.feature.TreeFeature;
 import net.minecraft.world.level.levelgen.placement.PlacedFeature;
 
 /**
@@ -113,7 +113,7 @@ public final class SurfaceSampler {
     }
     
     /**
-     * Checks if a biome places a {@link Feature#TREE} in the vegetation step.
+     * Checks if a biome places a {@link TreeFeature} in the vegetation step.
      * Works for modded biomes too since it doesn't pull from a hardcoded list.
      */
     private static boolean biomeHasTrees(Biome biome) {
@@ -124,7 +124,7 @@ public final class SurfaceSampler {
         }
 
         for (Holder<PlacedFeature> placedHolder : steps.get(stepIndex)) {
-            boolean isTree = ((PlacedFeature)placedHolder.value()).getFeatures().anyMatch(configured -> configured.feature() == Feature.TREE);
+            boolean isTree = ((PlacedFeature)placedHolder.value()).getFeatures().anyMatch(configured -> configured.value() instanceof TreeFeature);
             if (isTree) {
                 return true;
             }
@@ -191,13 +191,13 @@ public final class SurfaceSampler {
 
     private static int findSurfaceHeight(DensityFunction finalDensity, LevelHeightAccessor heightAccessor, int blockX, int blockZ, int expectedHeightHint) {
 
-        int bottom = heightAccessor.getMinBuildHeight();
+        int bottom = heightAccessor.getMinY();
         int prevY;
         int y;
         if (expectedHeightHint != NO_HEIGHT_HINT) {
             prevY = expectedHeightHint + FLOATING_OUTLIER_THRESHOLD_BLOCKS + MARCH_STEP + 1; // Base march height off of height hint, assuming it's not nothing
         } else {
-            prevY = heightAccessor.getMaxBuildHeight() - 1;
+            prevY = heightAccessor.getMaxY();
         }
         y = prevY - MARCH_STEP;
         int fallback = bottom;

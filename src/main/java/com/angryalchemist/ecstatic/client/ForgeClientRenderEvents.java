@@ -87,14 +87,14 @@ public final class ForgeClientRenderEvents {
         }
 
         while (ForgeClientKeyBindings.OPEN_BIOME_STYLE_KEY.consumeClick()) {
-            if (client.screen == null) {
-                client.setScreen(new BiomeStyleScreen());
+            if (client.gui.screen() == null) {
+                client.gui.setScreen(new BiomeStyleScreen());
             }
         }
 
         while (ForgeClientKeyBindings.OPEN_SETTINGS_KEY.consumeClick()) {
-            if (client.screen == null) {
-                client.setScreen(new LodSettingsScreen());
+            if (client.gui.screen() == null) {
+                client.gui.setScreen(new LodSettingsScreen());
             }
         }
     }

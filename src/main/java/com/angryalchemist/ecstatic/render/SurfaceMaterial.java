@@ -4,9 +4,11 @@ import com.angryalchemist.ecstatic.storage.HeightmapColumn;
 import java.util.List;
 import java.util.Set;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.block.model.BakedQuad;
+import net.minecraft.client.renderer.block.dispatch.BlockStateModel;
+import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart;
+import net.minecraft.client.resources.model.geometry.BakedQuad;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
-import net.minecraft.client.resources.model.BakedModel;
+import java.util.ArrayList;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Registry;
@@ -79,19 +81,27 @@ final class SurfaceMaterial {
     }
 
     static SurfaceMaterial.Sprite resolveSprite(BlockState state, Direction face) {
-        BakedModel model = Minecraft.getInstance().getBlockRenderer().getBlockModel(state);
-        List<BakedQuad> quads = model.getQuads(state, face, RandomSource.create());
-        if (quads.isEmpty()) {
-            quads = model.getQuads(state, null, RandomSource.create());
+        BlockStateModel model = Minecraft.getInstance().getModelManager().getBlockStateModelSet().get(state);
+        List<BlockStateModelPart> parts = new ArrayList<>();
+        model.collectParts(RandomSource.create(), parts);
+        List<BakedQuad> quads = new ArrayList<>();
+        for (BlockStateModelPart part : parts) {
+            quads.addAll(part.getQuads(face));
         }
 
         if (quads.isEmpty()) {
-            TextureAtlasSprite particle = model.getParticleIcon();
+            for (BlockStateModelPart part : parts) {
+                quads.addAll(part.getQuads(null));
+            }
+        }
+
+        if (quads.isEmpty()) {
+            TextureAtlasSprite particle = model.particleMaterial().sprite();
             return new SurfaceMaterial.Sprite(particle.getU0(), particle.getU1(), particle.getV0(), particle.getV1(), false);
         } else {
             BakedQuad quad = quads.get(0);
-            TextureAtlasSprite sprite = quad.getSprite();
-            return new SurfaceMaterial.Sprite(sprite.getU0(), sprite.getU1(), sprite.getV0(), sprite.getV1(), quad.getTintIndex() >= 0);
+            TextureAtlasSprite sprite = quad.materialInfo().sprite();
+            return new SurfaceMaterial.Sprite(sprite.getU0(), sprite.getU1(), sprite.getV0(), sprite.getV1(), quad.materialInfo().tintIndex() >= 0);
         }
     }
 
@@ -99,7 +109,7 @@ final class SurfaceMaterial {
         Biome biome = biomeOf(biomeRegistry, column.biomeRawId());
         Identifier biomeKey = biome != null ? biomeRegistry.getKey(biome) : null;
         boolean tooSteepForSnow = slope >= 1.25F;
-        boolean coldEnoughToSnow = biome != null && biome.coldEnoughToSnow(new BlockPos(blockX, column.height(), blockZ));
+        boolean coldEnoughToSnow = biome != null && biome.coldEnoughToSnow(new BlockPos(blockX, column.height(), blockZ), 63);
         if (!tooSteepForSnow && coldEnoughToSnow) {
             return SNOW;
         } else if (biomeKey != null && BADLANDS_BIOMES.contains(biomeKey)) {

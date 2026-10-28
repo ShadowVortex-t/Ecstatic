@@ -47,3 +47,11 @@ net/minecraft/world/level/block/Block
 net/minecraft/world/level/block/state
 net/minecraft/client/renderer/block
 net/minecraft/client/renderer/chunk
+net/minecraft/world/level/levelgen/densityfunction/DensityFunction
+net/minecraft/world/level/levelgen/material
+net/minecraft/world/level/levelgen/NoiseRouter
+net/minecraft/world/entity/Entity
+net/minecraft/client/OptionInstance
+net/minecraft/world/level/biome/BiomeSource
+net/minecraft/world/level/biome/Climate
+net/minecraft/client/renderer/state/level

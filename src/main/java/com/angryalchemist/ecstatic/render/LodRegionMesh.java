@@ -710,7 +710,7 @@ public final class LodRegionMesh implements AutoCloseable {
         }
 
         Biome biome = (Biome)biomeRegistry.byId(column.biomeRawId());
-        return biome != null && biome.coldEnoughToSnow(new BlockPos(blockX, 62, blockZ));
+        return biome != null && biome.coldEnoughToSnow(new BlockPos(blockX, 62, blockZ), 63);
     }
 
     private static int fadedWaterAlpha(LodRegionMesh.FadeParams fade, float worldX, float worldY, float worldZ, float baseAlpha) {
@@ -754,7 +754,7 @@ public final class LodRegionMesh implements AutoCloseable {
                 if (column != null) {
                     float cx = region.originBlockX() + lx * spacing;
                     float cz = region.originBlockZ() + lz * spacing;
-                    long structureChunk = ChunkPos.asLong(Math.floorDiv((int)cx, 16), Math.floorDiv((int)cz, 16));
+                    long structureChunk = ChunkPos.pack(Math.floorDiv((int)cx, 16), Math.floorDiv((int)cz, 16));
                     if (!LodStructureIslands.renderedChunks().contains(structureChunk)) {
                         boolean columnFullyOpaque = fade.alphaAt(cx, column.height(), cz) == 255;
                         if (columnFullyOpaque == opaquePass) {
@@ -2195,7 +2195,7 @@ public final class LodRegionMesh implements AutoCloseable {
         int blockZ = region.originBlockZ() + lz * spacing;
         Biome biome = biomeRegistry != null ? (Biome)biomeRegistry.byId(column.biomeRawId()) : null;
         Identifier biomeKey = biome != null && biomeRegistry != null ? biomeRegistry.getKey(biome) : null;
-        boolean coldEnoughToSnow = biome != null && biome.coldEnoughToSnow(new BlockPos(blockX, column.height(), blockZ));
+        boolean coldEnoughToSnow = biome != null && biome.coldEnoughToSnow(new BlockPos(blockX, column.height(), blockZ), 63);
         boolean biomeSand = SurfaceMaterial.isSandBiome(biomeKey);
         float sandBlend = biomeSand ? 1.0F - smoothstep(0.0F, 0.3F, slope) : 0.0F;
         int color = terrainColor(column, biomeSand, sandBlend, dirtBlend, stoneBlend, coldEnoughToSnow);
@@ -2270,7 +2270,7 @@ public final class LodRegionMesh implements AutoCloseable {
     static float snowStartHeightBlocks() { //deprecated
         ClientLevel level = Minecraft.getInstance().level;
         int minHeight = level != null ? level.getMinY() : -64;
-        int maxHeight = level != null ? level.getMaxBuildHeight() : 320;
+        int maxHeight = level != null ? (level.getMaxY() + 1) : 320;
         float percent = BiomeStyleConfig.get().snowHeightPercent();
         return minHeight + (maxHeight - minHeight) * (percent / 100.0F);
     }

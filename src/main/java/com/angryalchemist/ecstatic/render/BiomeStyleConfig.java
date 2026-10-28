@@ -273,7 +273,7 @@ final class BiomeStyleConfig {
 
         try (InputStream in = Files.newInputStream(path)) {
             NativeImage image = NativeImage.read(in);
-            DynamicTexture texture = new DynamicTexture(image);
+            DynamicTexture texture = new DynamicTexture(() -> "Ecstatic biome style " + group.name() + " " + part, image);
             Identifier id = Identifier.fromNamespaceAndPath("ecstatic", "biome_style/" + group.name().toLowerCase(Locale.ROOT) + "_" + part);
             Minecraft.getInstance().getTextureManager().register(id, texture);
             cache.put(group, texture);

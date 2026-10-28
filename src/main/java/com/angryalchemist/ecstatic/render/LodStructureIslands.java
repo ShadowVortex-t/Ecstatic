@@ -94,13 +94,13 @@ final class LodStructureIslands {
             Set<String> foundStructureIds = new TreeSet<>();
 
             for (ChunkPos candidate : candidates) {
-                SavedChunkAccess.StructureFootprint footprint = savedChunks.structureFootprint(candidate.x, candidate.z);
+                SavedChunkAccess.StructureFootprint footprint = savedChunks.structureFootprint(candidate.x(), candidate.z());
                 if (footprint != null) {
                     Set<String> ids = new HashSet<>(footprint.ids());
                     ids.removeAll(EXCLUDED_STRUCTURE_IDS);
                     if (!ids.isEmpty()) {
                         foundStructureIds.addAll(ids);
-                        int footprintMinY = Math.max(level.getMinBuildHeight(), footprint.minY() - 4);
+                        int footprintMinY = Math.max(level.getMinY(), footprint.minY() - 4);
                         int footprintMaxY = Math.min(192, footprint.maxY() + 4);
                         int fromChunkX = footprint.minX() >> 4;
                         int toChunkX = footprint.maxX() >> 4;
@@ -115,7 +115,7 @@ final class LodStructureIslands {
                                     && cz >= minChunkZ
                                     && cz <= maxChunkZ
                                     && !withinRenderDistance(cx, cz, centerChunkX, centerChunkZ, renderDistanceChunks)) {
-                                    long packed = ChunkPos.asLong(cx, cz);
+                                    long packed = ChunkPos.pack(cx, cz);
                                     chunksToRender.add(packed);
                                     yRangeByChunk.merge(
                                         packed, new int[]{footprintMinY, footprintMaxY}, (a, b) -> new int[]{Math.min(a[0], b[0]), Math.max(a[1], b[1])}

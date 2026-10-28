@@ -59,8 +59,8 @@ public final class LodDebugCompare {
                 return "compare (saved): chunk not found on disk (unexpected - player is standing in it)";
             }
 
-            int minY = level.getMinBuildHeight();
-            int scanFrom = Math.min(realHeight + 4, level.getMaxBuildHeight() - 1);
+            int minY = level.getMinY();
+            int scanFrom = Math.min(realHeight + 4, level.getMaxY());
 
             for (int y = scanFrom; y >= minY; y--) {
                 BlockState state = savedChunks.blockAt(blockX, y, blockZ);
