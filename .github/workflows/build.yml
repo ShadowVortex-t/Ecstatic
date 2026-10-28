@@ -1,4 +1,5 @@
 name: build
+# trigger: rebuild of port-26.3 head
 on:
   workflow_dispatch:
   push:
