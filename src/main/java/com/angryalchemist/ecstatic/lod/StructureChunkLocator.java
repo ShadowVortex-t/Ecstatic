@@ -34,11 +34,11 @@ public final class StructureChunkLocator {
                     for (int cellX = minCellX; cellX <= maxCellX; cellX++) {
                         for (int cellZ = minCellZ; cellZ <= maxCellZ; cellZ++) {
                             ChunkPos candidate = spread.getPotentialStructureChunk(seed, cellX * spacing, cellZ * spacing);
-                            if (candidate.x >= minChunkX
-                                && candidate.x <= maxChunkX
-                                && candidate.z >= minChunkZ
-                                && candidate.z <= maxChunkZ
-                                && placement.isStructureChunk(state, candidate.x, candidate.z)) {
+                            if (candidate.x() >= minChunkX
+                                && candidate.x() <= maxChunkX
+                                && candidate.z() >= minChunkZ
+                                && candidate.z() <= maxChunkZ
+                                && placement.isStructureChunk(state, candidate.x(), candidate.z())) {
                                 candidates.add(candidate);
                             }
                         }

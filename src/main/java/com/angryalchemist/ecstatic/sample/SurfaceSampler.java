@@ -20,10 +20,13 @@ import net.minecraft.world.level.biome.Biomes;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkGenerator;
-import net.minecraft.world.level.levelgen.DensityFunction;
+import net.minecraft.world.level.biome.BiomeResolver;
+import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.world.level.levelgen.NoiseBasedChunkGenerator;
 import net.minecraft.world.level.levelgen.RandomState;
-import net.minecraft.world.level.levelgen.SurfaceSystem;
-import net.minecraft.world.level.levelgen.DensityFunction.SinglePointContext;
+import net.minecraft.world.level.levelgen.densityfunction.DensitySampler;
+import net.minecraft.world.level.levelgen.densityfunction.SamplerContext;
+import net.minecraft.world.level.levelgen.material.MaterialSystem;
 import net.minecraft.world.level.levelgen.GenerationStep.Decoration;
 import net.minecraft.world.level.levelgen.feature.TreeFeature;
 import net.minecraft.world.level.levelgen.placement.PlacedFeature;
@@ -57,7 +60,7 @@ public final class SurfaceSampler {
      */
     private static Method resolveGetBandMethod() {
         try {
-            for (Method method : SurfaceSystem.class.getDeclaredMethods()) {
+            for (Method method : MaterialSystem.class.getDeclaredMethods()) {
                 if (method.getReturnType() == BlockState.class) {
                     Class<?>[] params = method.getParameterTypes();
                     if (params.length == 3 && params[0] == int.class && params[1] == int.class && params[2] == int.class) {
@@ -67,10 +70,10 @@ public final class SurfaceSampler {
                 }
             }
         } catch (Exception e) {
-            Constants.LOG.warn("Ecstatic: Exception while scanning SurfaceSystem methods", e);
+            Constants.LOG.warn("Ecstatic: Exception while scanning MaterialSystem methods", e);
         }
     
-        Constants.LOG.warn("Ecstatic: Could not resolve SurfaceSystem#getBand via reflection; badlands terrain will fall back to plain sampled grass color");
+        Constants.LOG.warn("Ecstatic: Could not resolve MaterialSystem band lookup via reflection; badlands terrain will fall back to plain sampled grass color");
         return null;
     }
 
@@ -96,11 +99,13 @@ public final class SurfaceSampler {
         int blockZ,
         int expectedHeightHint
     ) {
-        DensityFunction finalDensity = randomState.router().finalDensity();
-        int height = findSurfaceHeight(finalDensity, heightAccessor, blockX, blockZ, expectedHeightHint);
-        BiomeSource biomeSource = generator.getBiomeSource();
-        Holder<Biome> biomeHolder = biomeSource.getNoiseBiome(
-            QuartPos.fromBlock(blockX), QuartPos.fromBlock(height), QuartPos.fromBlock(blockZ), randomState.sampler()
+        DensitySampler finalDensity = finalDensitySampler(generator, randomState);
+        int height = finalDensity != null
+            ? findSurfaceHeight(finalDensity, heightAccessor, blockX, blockZ, expectedHeightHint)
+            : generator.getBaseHeight(blockX, blockZ, Heightmap.Types.WORLD_SURFACE_WG, heightAccessor, randomState);
+        BiomeResolver resolver = biomeResolver(generator.getBiomeSource(), randomState);
+        Holder<Biome> biomeHolder = resolver.getNoiseBiome(
+            QuartPos.fromBlock(blockX), QuartPos.fromBlock(height), QuartPos.fromBlock(blockZ)
         );
         Biome biome = (Biome)biomeHolder.value();
         int biomeRawId = biomeRegistry.getId(biome);
@@ -112,6 +117,42 @@ public final class SurfaceSampler {
         return new SurfaceSample(height, biomeRawId, colorRgb, hasTrees);
     }
     
+    private record SamplerKey(RandomState randomState, DensitySampler sampler) {
+    }
+
+    private record ResolverKey(BiomeSource source, RandomState randomState, BiomeResolver resolver) {
+    }
+
+    private static volatile SamplerKey cachedSampler;
+    private static volatile ResolverKey cachedResolver;
+
+    /** The compiled final-density sampler for noise-based generators, or null for anything else (flat, custom, etc). */
+    private static DensitySampler finalDensitySampler(ChunkGenerator generator, RandomState randomState) {
+        if (!(generator instanceof NoiseBasedChunkGenerator noise)) {
+            return null;
+        }
+
+        SamplerKey cached = cachedSampler;
+        if (cached != null && cached.randomState() == randomState) {
+            return cached.sampler();
+        }
+
+        DensitySampler sampler = randomState.getSampler(noise.generatorSettings().value().noiseRouter().finalDensity());
+        cachedSampler = new SamplerKey(randomState, sampler);
+        return sampler;
+    }
+
+    private static BiomeResolver biomeResolver(BiomeSource source, RandomState randomState) {
+        ResolverKey cached = cachedResolver;
+        if (cached != null && cached.source() == source && cached.randomState() == randomState) {
+            return cached.resolver();
+        }
+
+        BiomeResolver resolver = source.createUncachedResolver(randomState);
+        cachedResolver = new ResolverKey(source, randomState, resolver);
+        return resolver;
+    }
+
     /**
      * Checks if a biome places a {@link TreeFeature} in the vegetation step.
      * Works for modded biomes too since it doesn't pull from a hardcoded list.
@@ -151,18 +192,18 @@ public final class SurfaceSampler {
     }
 
     private static int terracottaColor(BlockState band) {
-        if (band.is(Blocks.ORANGE_TERRACOTTA)) {
+        if (band.is(Blocks.DYED_TERRACOTTA.orange())) {
             return 10703913;
-        } else if (band.is(Blocks.YELLOW_TERRACOTTA)) {
+        } else if (band.is(Blocks.DYED_TERRACOTTA.yellow())) {
             return 12099634;
-        } else if (band.is(Blocks.BROWN_TERRACOTTA)) {
+        } else if (band.is(Blocks.DYED_TERRACOTTA.brown())) {
             return 5059364;
-        } else if (band.is(Blocks.RED_TERRACOTTA)) {
+        } else if (band.is(Blocks.DYED_TERRACOTTA.red())) {
             return 9387310;
-        } else if (band.is(Blocks.WHITE_TERRACOTTA)) {
+        } else if (band.is(Blocks.DYED_TERRACOTTA.white())) {
             return 13743267;
         } else {
-            return band.is(Blocks.LIGHT_GRAY_TERRACOTTA) ? 10257528 : 10117462;
+            return band.is(Blocks.DYED_TERRACOTTA.lightGray()) ? 10257528 : 10117462;
         }
     }
 
@@ -189,7 +230,7 @@ public final class SurfaceSampler {
         return (rAvg << 16) | (gAvg << 8) | bAvg;
     }
 
-    private static int findSurfaceHeight(DensityFunction finalDensity, LevelHeightAccessor heightAccessor, int blockX, int blockZ, int expectedHeightHint) {
+    private static int findSurfaceHeight(DensitySampler finalDensity, LevelHeightAccessor heightAccessor, int blockX, int blockZ, int expectedHeightHint) {
 
         int bottom = heightAccessor.getMinY();
         int prevY;
@@ -221,7 +262,7 @@ public final class SurfaceSampler {
         return fallback;
     }
 
-    private static int binaryRefine(DensityFunction finalDensity, int blockX, int blockZ, int highNonSolidY, int lowSolidY) {
+    private static int binaryRefine(DensitySampler finalDensity, int blockX, int blockZ, int highNonSolidY, int lowSolidY) {
         while (highNonSolidY - lowSolidY > 1) {
             int mid = (highNonSolidY + lowSolidY) >>> 1;
             if (isSolid(finalDensity, blockX, mid, blockZ)) {
@@ -234,7 +275,7 @@ public final class SurfaceSampler {
         return lowSolidY;
     }
 
-    private static boolean isSolid(DensityFunction finalDensity, int blockX, int blockY, int blockZ) {
-        return finalDensity.compute(new SinglePointContext(blockX, blockY, blockZ)) > 0.0;
+    private static boolean isSolid(DensitySampler finalDensity, int blockX, int blockY, int blockZ) {
+        return finalDensity.sampleValue(SamplerContext.EMPTY_UNCACHED, blockX, blockY, blockZ) > 0.0F;
     }
 }

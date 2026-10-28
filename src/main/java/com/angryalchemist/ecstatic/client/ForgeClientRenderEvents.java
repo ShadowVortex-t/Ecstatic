@@ -40,8 +40,7 @@ public final class ForgeClientRenderEvents {
             if (!(camera.entity() instanceof LivingEntity living && (living.hasEffect(MobEffects.BLINDNESS) || living.hasEffect(MobEffects.DARKNESS)))) {
                 Minecraft client = Minecraft.getInstance();
                 Vec3 pos = camera.position();
-                boolean isFoggy = client.level.effects().isFoggyAt(Mth.floor(pos.x), Mth.floor(pos.y))
-                    || client.gui.getBossOverlay().shouldCreateWorldFog();
+                boolean isFoggy = client.gui.hud.getBossOverlay().shouldCreateWorldFog();
                 if (!isFoggy) {
                     // push the vanilla render-distance fog far out so it doesn't hide the LOD terrain
                     FogData fog = event.getFogData();

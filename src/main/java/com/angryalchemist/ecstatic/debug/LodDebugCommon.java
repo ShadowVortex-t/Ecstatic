@@ -9,7 +9,7 @@ public final class LodDebugCommon {
 
     public static void sendMessage(Minecraft client, String message) {
         if (client.player != null) {
-            client.player.displayClientMessage(Component.literal("[Ecstatic] " + message), false);
+            client.player.sendSystemMessage(Component.literal("[Ecstatic] " + message));
         }
     }
 }

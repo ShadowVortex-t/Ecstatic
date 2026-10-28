@@ -26,6 +26,7 @@ import java.util.concurrent.TimeUnit;
 import net.minecraft.client.renderer.state.level.CameraEntityRenderState;
 import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.client.renderer.state.level.LevelRenderState;
+import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.Registry;
@@ -486,8 +487,8 @@ public final class LodRenderer {
         ClientLevel clientLevel = Minecraft.getInstance().level;
         if (clientLevel != null) {
             Registry<Biome> biomeRegistry = clientLevel.registryAccess().lookupOrThrow(Registries.BIOME);
-            Camera camera = Minecraft.getInstance().gameRenderer.getMainCamera();
-            LodRegionMesh.FadeParams fade = fadeParamsAt(camera.getPosition());
+            Camera camera = Minecraft.getInstance().gameRenderer.mainCamera();
+            LodRegionMesh.FadeParams fade = fadeParamsAt(camera.position());
             RegionLodCoordinator coordinator = Ecstatic.activeCoordinator();
             if (coordinator != null) {
                 refreshLevelMeshes(0, coordinator.bootstrapFile(), fade, biomeRegistry);
