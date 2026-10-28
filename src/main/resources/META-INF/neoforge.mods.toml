@@ -16,12 +16,12 @@ description = '''Massive render-distance terrain LOD via surface-only generation
 [[dependencies.ecstatic]]
 modId = "neoforge"
 mandatory = true
-versionRange = "[21.1.0,)"
+versionRange = "[26.3.0.99,)"
 ordering = "NONE"
 side = "BOTH"
 [[dependencies.ecstatic]]
 modId = "minecraft"
 mandatory = true
-versionRange = "[1.21.1, 1.22)"
+versionRange = "[26.3, 26.4)"
 ordering = "NONE"
 side = "BOTH"
