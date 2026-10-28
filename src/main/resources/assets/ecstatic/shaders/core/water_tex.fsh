@@ -1,22 +1,18 @@
-#version 150
+#version 330
+#extension GL_ARB_separate_shader_objects : require
 
-#moj_import <fog.glsl>
+#include <minecraft:fog.glsl>
+#include <minecraft:dynamictransforms.glsl>
+#include <ecstatic:ecstatic_params.glsl>
 
 uniform sampler2D Sampler0;
-uniform vec4 ColorModulator;
-uniform mat4 ModelViewMat;
-uniform vec3 SunDir;
-uniform float FogStart;
-uniform float FogEnd;
-uniform vec4 FogColor;
-uniform float FogIntensity;
 
-in vec4 vertexColor;
-in vec3 eyePos;
-in float vertexDistance;
-in vec2 texCoord0;
+layout(location = 0) in float vertexDistance;
+layout(location = 1) in vec4 vertexColor;
+layout(location = 2) in vec2 texCoord0;
+layout(location = 3) in vec3 eyePos;
 
-out vec4 fragColor;
+layout(location = 0) out vec4 fragColor;
 
 #define SPECULAR_SHININESS 180.0
 // How far above the horizon the sun/moon must climb before its glint fades in.
@@ -36,10 +32,10 @@ void main() {
     float fresnel = 0.02 + 0.98 * pow(1.0 - cosTheta, 5.0);
 
     vec3 reflectDir = reflect(viewDirWorld, n);
-    float sunVis = smoothstep(0.0, LIGHT_HORIZON_FADE, SunDir.y);
-    float moonVis = smoothstep(0.0, LIGHT_HORIZON_FADE, -SunDir.y);
-    float sunSpec = pow(clamp(dot(reflectDir, SunDir), 0.0, 1.0), SPECULAR_SHININESS) * sunVis;
-    float moonSpec = pow(clamp(dot(reflectDir, -SunDir), 0.0, 1.0), SPECULAR_SHININESS) * moonVis * 0.25;
+    float sunVis = smoothstep(0.0, LIGHT_HORIZON_FADE, EcsSunDir.y);
+    float moonVis = smoothstep(0.0, LIGHT_HORIZON_FADE, -EcsSunDir.y);
+    float sunSpec = pow(clamp(dot(reflectDir, EcsSunDir), 0.0, 1.0), SPECULAR_SHININESS) * sunVis;
+    float moonSpec = pow(clamp(dot(reflectDir, -EcsSunDir), 0.0, 1.0), SPECULAR_SHININESS) * moonVis * 0.25;
 
     vec3 color = mix(baseColor, FogColor.rgb, fresnel * 0.45);
     color += vec3(1.0, 0.97, 0.88) * sunSpec + vec3(0.72, 0.80, 1.0) * moonSpec;
@@ -48,5 +44,5 @@ void main() {
     float alpha = clamp(baseAlpha * (1.0 + boost), 0.0, 1.0);
 
     vec4 shaded = vec4(color, alpha) * ColorModulator;
-    fragColor = mix(shaded, linear_fog(shaded, vertexDistance, FogStart, FogEnd, FogColor), FogIntensity);
+    fragColor = mix(shaded, ecs_linear_fog(shaded, vertexDistance, EcsFogStart, EcsFogEnd, FogColor), EcsFogIntensity);
 }

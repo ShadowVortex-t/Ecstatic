@@ -6,30 +6,23 @@ import com.angryalchemist.ecstatic.lod.LodLevel;
 import com.angryalchemist.ecstatic.lod.RegionCoord;
 import com.angryalchemist.ecstatic.storage.HeightmapColumn;
 import com.angryalchemist.ecstatic.storage.LodRegionFile;
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.BufferBuilder;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
-import com.mojang.blaze3d.vertex.Tesselator;
-import com.mojang.blaze3d.vertex.VertexBuffer;
-import com.mojang.blaze3d.vertex.VertexFormat;
-import com.mojang.blaze3d.vertex.MeshData;
-import com.mojang.blaze3d.vertex.VertexBuffer.Usage;
-import com.mojang.blaze3d.vertex.VertexFormat.Mode;
+import com.mojang.renderpearl.api.textures.GpuSampler;
+import com.mojang.renderpearl.api.textures.GpuTextureView;
+import com.mojang.renderpearl.api.commands.RenderPass;
+import com.mojang.renderpearl.api.vertex.VertexFormat;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.function.Supplier;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.client.renderer.GameRenderer;
-import net.minecraft.client.renderer.RenderType;
-import net.minecraft.client.renderer.ShaderInstance;
+import net.minecraft.client.renderer.texture.TextureAtlas;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Registry;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.block.Blocks;
@@ -77,10 +70,10 @@ public final class LodRegionMesh implements AutoCloseable {
     private static final int FULL_ALPHA = 255;
     private static final SurfaceMaterial.Sprite FULL_SPRITE = new SurfaceMaterial.Sprite(0.0F, 1.0F, 0.0F, 1.0F, false);
     private final boolean terrainTextured;
-    private final VertexBuffer terrainBufferOpaque;
-    private final VertexBuffer terrainBufferFade;
+    private final GpuMesh terrainBufferOpaque;
+    private final GpuMesh terrainBufferFade;
     private final boolean terrainLit;
-    private final VertexBuffer terrainBufferWater;
+    private final GpuMesh terrainBufferWater;
     private final boolean waterLit;
     private final List<LodRegionMesh.TreeMeshPart> treeParts;
     private static SurfaceMaterial.Sprite cachedWaterSprite;
@@ -89,11 +82,11 @@ public final class LodRegionMesh implements AutoCloseable {
     private static final float SEAFLOOR_DEPTH_BELOW_SURFACE = 3.0F;
 
     private LodRegionMesh(
-        VertexBuffer terrainBufferOpaque,
-        VertexBuffer terrainBufferFade,
+        GpuMesh terrainBufferOpaque,
+        GpuMesh terrainBufferFade,
         boolean terrainTextured,
         boolean terrainLit,
-        VertexBuffer terrainBufferWater,
+        GpuMesh terrainBufferWater,
         boolean waterLit,
         List<LodRegionMesh.TreeMeshPart> treeParts
     ) {
@@ -167,15 +160,15 @@ public final class LodRegionMesh implements AutoCloseable {
     }
 
     public static LodRegionMesh upload(LodRegionMesh.RecordedRegionMesh recorded) {
-        VertexBuffer terrainBufferOpaque = uploadPart(recorded.terrainOpaque());
-        VertexBuffer terrainBufferFade = recorded.terrainFade() == null ? null : uploadPart(recorded.terrainFade());
-        VertexBuffer terrainBufferWater = recorded.water() == null ? null : uploadPart(recorded.water());
+        GpuMesh terrainBufferOpaque = uploadPart(recorded.terrainOpaque(), "Ecstatic terrain");
+        GpuMesh terrainBufferFade = recorded.terrainFade() == null ? null : uploadPart(recorded.terrainFade(), "Ecstatic terrain fade");
+        GpuMesh terrainBufferWater = recorded.water() == null ? null : uploadPart(recorded.water(), "Ecstatic water");
         List<LodRegionMesh.TreeMeshPart> treeParts = new ArrayList<>(recorded.treeParts().size());
 
         for (LodRegionMesh.RecordedTreePart treePart : recorded.treeParts()) {
-            VertexBuffer buffer = uploadPart(treePart.part());
+            GpuMesh buffer = uploadPart(treePart.part(), "Ecstatic trees");
             if (buffer != null) {
-                treeParts.add(new LodRegionMesh.TreeMeshPart(treePart.renderType(), buffer));
+                treeParts.add(new LodRegionMesh.TreeMeshPart(treePart.texture(), buffer));
             }
         }
 
@@ -184,11 +177,16 @@ public final class LodRegionMesh implements AutoCloseable {
         );
     }
 
-    static VertexBuffer uploadPart(LodRegionMesh.RecordedPart part) {
-        BufferBuilder builder = Tesselator.getInstance().begin(Mode.TRIANGLES, part.format());
-        BufferBuilderVertexSink glSink = new BufferBuilderVertexSink(builder);
-        part.sink().replayInto(glSink, part.kind());
-        return upload(builder, part.sink().count());
+    static GpuMesh uploadPart(LodRegionMesh.RecordedPart part, String label) {
+        if (part.sink().count() == 0) {
+            return null;
+        }
+
+        try (GpuMesh.Builder builder = GpuMesh.begin(part.format(), part.sink().count())) {
+            BufferBuilderVertexSink glSink = new BufferBuilderVertexSink(builder.vertices());
+            part.sink().replayInto(glSink, part.kind());
+            return builder.upload(label);
+        }
     }
 
     private static boolean regionBeyondFadeBand(RegionCoord region, int spacing, LodRegionMesh.FadeParams fade) {
@@ -236,7 +234,7 @@ public final class LodRegionMesh implements AutoCloseable {
     ) {
         int samplesPerAxis = regionFile.samplesPerAxis;
         int spacing = regionFile.sampleSpacingBlocks;
-        VertexFormat format = litFormat ? LodTerrainRenderType.BLOCK_SAFE : DefaultVertexFormat.POSITION_COLOR;
+        VertexFormat format = litFormat ? LodGpu.LIT_FORMAT : DefaultVertexFormat.POSITION_COLOR;
         RecordedVertexSink sink = new RecordedVertexSink();
         RecordedVertexSink.Kind kind = litFormat ? RecordedVertexSink.Kind.LIT : RecordedVertexSink.Kind.PLAIN;
         int last = samplesPerAxis - 1;
@@ -372,7 +370,7 @@ public final class LodRegionMesh implements AutoCloseable {
         int iceColor = BiomeStyleConfig.get().iceColor();
         int subdivisions = waterTextureSubdivisions(regionFile.lodLevel);
         SurfaceMaterial.Sprite waterSprite = waterSprite();
-        VertexFormat format = litFormat ? LodTerrainRenderType.BLOCK_SAFE : DefaultVertexFormat.POSITION_TEX_COLOR;
+        VertexFormat format = litFormat ? LodGpu.LIT_FORMAT : DefaultVertexFormat.POSITION_TEX_COLOR;
         RecordedVertexSink sink = new RecordedVertexSink();
         RecordedVertexSink.Kind kind = litFormat ? RecordedVertexSink.Kind.LIT_TEXTURED : RecordedVertexSink.Kind.TEXTURED;
         int last = samplesPerAxis - 1;
@@ -745,7 +743,7 @@ public final class LodRegionMesh implements AutoCloseable {
         int subStep = LodSettingsConfig.get().lod1SubStepBlocks();
         int sub = subStep >= 2 ? Math.max(1, spacing / 2) : spacing;
         boolean blockyTops = spacing <= 2;
-        VertexFormat format = litFormat ? LodTerrainRenderType.BLOCK_SAFE : DefaultVertexFormat.POSITION_TEX_COLOR;
+        VertexFormat format = litFormat ? LodGpu.LIT_FORMAT : DefaultVertexFormat.POSITION_TEX_COLOR;
         RecordedVertexSink sink = new RecordedVertexSink();
         RecordedVertexSink.Kind kind = litFormat ? RecordedVertexSink.Kind.LIT_TEXTURED : RecordedVertexSink.Kind.TEXTURED;
         LodRegionMesh.EdgeColumn[][] edgeGrid = new LodRegionMesh.EdgeColumn[samplesPerAxis][samplesPerAxis];
@@ -1477,12 +1475,12 @@ public final class LodRegionMesh implements AutoCloseable {
         List<LodRegionMesh.RecordedTreePart> parts = new ArrayList<>();
 
         for (TreeStyle.Group group : TreeStyle.Group.values()) {
-            ResourceLocation trunkTexture = config.trunkTextureId(group);
+            Identifier trunkTexture = config.trunkTextureId(group);
             if (trunkTexture != null) {
                 recordTexturedTreePart(parts, placements, fade, group, LodRegionMesh.TreePart.TRUNK, trunkTexture, config.trunkTint(group), vertexCount);
             }
 
-            ResourceLocation foliageTexture = config.foliageTextureId(group);
+            Identifier foliageTexture = config.foliageTextureId(group);
             if (foliageTexture != null) {
                 recordTexturedTreePart(parts, placements, fade, group, LodRegionMesh.TreePart.FOLIAGE, foliageTexture, config.foliageTint(group), vertexCount);
             }
@@ -1498,7 +1496,7 @@ public final class LodRegionMesh implements AutoCloseable {
         LodRegionMesh.FadeParams fade,
         TreeStyle.Group group,
         LodRegionMesh.TreePart part,
-        ResourceLocation texture,
+        Identifier texture,
         int tintColor,
         int[] vertexCount
     ) {
@@ -1517,7 +1515,7 @@ public final class LodRegionMesh implements AutoCloseable {
 
         parts.add(
             new LodRegionMesh.RecordedTreePart(
-                LodTreeRenderType.forTexture(texture),
+                texture,
                 new LodRegionMesh.RecordedPart(sink, RecordedVertexSink.Kind.TEXTURED, DefaultVertexFormat.POSITION_TEX_COLOR)
             )
         );
@@ -1549,24 +1547,11 @@ public final class LodRegionMesh implements AutoCloseable {
 
         parts.add(
             new LodRegionMesh.RecordedTreePart(
-                LodTerrainRenderType.TERRAIN_TEXTURED_OPAQUE_NOCULL,
+                null,
                 new LodRegionMesh.RecordedPart(sink, RecordedVertexSink.Kind.TEXTURED, DefaultVertexFormat.POSITION_TEX_COLOR)
             )
         );
         vertexCount[0] += partVertexCount[0];
-    }
-
-    private static VertexBuffer upload(BufferBuilder builder, int vertexCount) {
-        if (vertexCount == 0) {
-            return null;
-        }
-
-        MeshData rendered = builder.buildOrThrow();
-        VertexBuffer vertexBuffer = new VertexBuffer(Usage.STATIC);
-        vertexBuffer.bind();
-        vertexBuffer.upload(rendered);
-        VertexBuffer.unbind();
-        return vertexBuffer;
     }
 
     static void emitBoxTop(
@@ -2209,7 +2194,7 @@ public final class LodRegionMesh implements AutoCloseable {
         int blockX = region.originBlockX() + lx * spacing;
         int blockZ = region.originBlockZ() + lz * spacing;
         Biome biome = biomeRegistry != null ? (Biome)biomeRegistry.byId(column.biomeRawId()) : null;
-        ResourceLocation biomeKey = biome != null && biomeRegistry != null ? biomeRegistry.getKey(biome) : null;
+        Identifier biomeKey = biome != null && biomeRegistry != null ? biomeRegistry.getKey(biome) : null;
         boolean coldEnoughToSnow = biome != null && biome.coldEnoughToSnow(new BlockPos(blockX, column.height(), blockZ));
         boolean biomeSand = SurfaceMaterial.isSandBiome(biomeKey);
         float sandBlend = biomeSand ? 1.0F - smoothstep(0.0F, 0.3F, slope) : 0.0F;
@@ -2284,7 +2269,7 @@ public final class LodRegionMesh implements AutoCloseable {
 
     static float snowStartHeightBlocks() { //deprecated
         ClientLevel level = Minecraft.getInstance().level;
-        int minHeight = level != null ? level.getMinBuildHeight() : -64;
+        int minHeight = level != null ? level.getMinY() : -64;
         int maxHeight = level != null ? level.getMaxBuildHeight() : 320;
         float percent = BiomeStyleConfig.get().snowHeightPercent();
         return minHeight + (maxHeight - minHeight) * (percent / 100.0F);
@@ -2356,9 +2341,13 @@ public final class LodRegionMesh implements AutoCloseable {
         return Math.max(0, Math.min(255, v));
     }
 
-    public static void renderTerrainLitOpaque(List<LodRegionMesh> meshes, Matrix4f modelViewMatrix, Matrix4f projectionMatrix) {
-        List<VertexBuffer> plainLitOpaque = new ArrayList<>();
-        List<VertexBuffer> texturedLitOpaque = new ArrayList<>();
+    private static GpuTextureView atlasView() {
+        return Minecraft.getInstance().getTextureManager().getTexture(TextureAtlas.LOCATION_BLOCKS).getTextureView();
+    }
+
+    public static void renderTerrainLitOpaque(RenderPass pass, LodGpu.FrameState state, List<LodRegionMesh> meshes) {
+        List<GpuMesh> plainLitOpaque = new ArrayList<>();
+        List<GpuMesh> texturedLitOpaque = new ArrayList<>();
 
         for (LodRegionMesh mesh : meshes) {
             if (mesh.terrainLit && mesh.terrainBufferOpaque != null) {
@@ -2366,28 +2355,23 @@ public final class LodRegionMesh implements AutoCloseable {
             }
         }
 
-        boolean shaderPackActive = IrisCompat.isShaderPackActive();
-        boolean parallaxShaderReady = !shaderPackActive && LodParallaxShader.getOrNull() != null;
-        boolean litShaderReady = !shaderPackActive && LodLitShader.getOrNull() != null;
         boolean backfaceCullingEnabled = LodSettingsConfig.get().backfaceCullingEnabled();
-        Supplier<ShaderInstance> litShader = litShaderReady ? LodLitShader::getOrNull : GameRenderer::getRendertypeSolidShader;
-        RenderType plainLitOpaqueRenderType = parallaxShaderReady
-                ? LodTerrainRenderType.TERRAIN_PARALLAX
-                : (backfaceCullingEnabled ? LodTerrainRenderType.TERRAIN_LIT_OPAQUE : LodTerrainRenderType.TERRAIN_LIT_OPAQUE_NOCULL);
-        Supplier<ShaderInstance> plainLitShader = parallaxShaderReady ? LodParallaxShader::getOrNull : litShader;
-        renderBucket(plainLitOpaque, plainLitOpaqueRenderType, plainLitShader, modelViewMatrix, projectionMatrix);
-        renderBucket(
-                texturedLitOpaque,
-                backfaceCullingEnabled ? LodTerrainRenderType.TERRAIN_LIT_TEXTURED_OPAQUE : LodTerrainRenderType.TERRAIN_LIT_TEXTURED_OPAQUE_NOCULL,
-                litShader,
-                modelViewMatrix,
-                projectionMatrix
+        LodGpu.drawMeshes(pass, state, LodGpu.Program.PARALLAX, LodGpu.Shape.TRANSLUCENT_DEPTH, plainLitOpaque, null, null, null);
+        LodGpu.drawMeshes(
+            pass,
+            state,
+            LodGpu.Program.LIT_TEX,
+            backfaceCullingEnabled ? LodGpu.Shape.OPAQUE_CULL : LodGpu.Shape.OPAQUE_NOCULL,
+            texturedLitOpaque,
+            texturedLitOpaque.isEmpty() ? null : atlasView(),
+            LodGpu.atlasSampler(),
+            null
         );
     }
 
-    public static void renderTerrainLitFade(List<LodRegionMesh> meshes, Matrix4f modelViewMatrix, Matrix4f projectionMatrix) {
-        List<VertexBuffer> plainLitFade = new ArrayList<>();
-        List<VertexBuffer> texturedLitFade = new ArrayList<>();
+    public static void renderTerrainLitFade(RenderPass pass, LodGpu.FrameState state, List<LodRegionMesh> meshes) {
+        List<GpuMesh> plainLitFade = new ArrayList<>();
+        List<GpuMesh> texturedLitFade = new ArrayList<>();
 
         for (LodRegionMesh mesh : meshes) {
             if (mesh.terrainLit) {
@@ -2397,38 +2381,17 @@ public final class LodRegionMesh implements AutoCloseable {
             }
         }
 
-        if (IrisCompat.isShaderPackActive()) {
-            // Shader packs fully replace the translucent fragment shader with their own water/glass material
-            // So basically our little fade thing with alpha doesn't work as far as I'm aware
-            // I don't think there's an (easy) way around this, so for now we're just going to have to settle with a hard cutoff
-            // We can fully deal with this later, 1.4.0 does not support shaders
-            boolean backfaceCullingEnabled = LodSettingsConfig.get().backfaceCullingEnabled();
-            renderBucket(
-                    plainLitFade,
-                    backfaceCullingEnabled ? LodTerrainRenderType.TERRAIN_LIT_OPAQUE : LodTerrainRenderType.TERRAIN_LIT_OPAQUE_NOCULL,
-                    GameRenderer::getRendertypeSolidShader,
-                    modelViewMatrix,
-                    projectionMatrix
-            );
-            renderBucket(
-                    texturedLitFade,
-                    backfaceCullingEnabled ? LodTerrainRenderType.TERRAIN_LIT_TEXTURED_OPAQUE : LodTerrainRenderType.TERRAIN_LIT_TEXTURED_OPAQUE_NOCULL,
-                    GameRenderer::getRendertypeSolidShader,
-                    modelViewMatrix,
-                    projectionMatrix
-            );
-        } else {
-            Supplier<ShaderInstance> litShader = LodLitShader.getOrNull() != null ? LodLitShader::getOrNull : GameRenderer::getRendertypeTranslucentShader;
-            renderBucket(plainLitFade, LodTerrainRenderType.TERRAIN_LIT, litShader, modelViewMatrix, projectionMatrix);
-            renderBucket(texturedLitFade, LodTerrainRenderType.TERRAIN_LIT_TEXTURED, litShader, modelViewMatrix, projectionMatrix);
-        }
+        LodGpu.drawMeshes(pass, state, LodGpu.Program.LIT_PLAIN, LodGpu.Shape.FADE, plainLitFade, null, null, null);
+        LodGpu.drawMeshes(
+            pass, state, LodGpu.Program.LIT_TEX, LodGpu.Shape.FADE, texturedLitFade, texturedLitFade.isEmpty() ? null : atlasView(), LodGpu.atlasSampler(), null
+        );
     }
 
-    public static void renderTerrainCheap(List<LodRegionMesh> meshes, Matrix4f modelViewMatrix, Matrix4f projectionMatrix) {
-        List<VertexBuffer> plainCheapOpaque = new ArrayList<>();
-        List<VertexBuffer> plainCheapFade = new ArrayList<>();
-        List<VertexBuffer> texturedCheapOpaque = new ArrayList<>();
-        List<VertexBuffer> texturedCheapFade = new ArrayList<>();
+    public static void renderTerrainCheap(RenderPass pass, LodGpu.FrameState state, List<LodRegionMesh> meshes) {
+        List<GpuMesh> plainCheapOpaque = new ArrayList<>();
+        List<GpuMesh> plainCheapFade = new ArrayList<>();
+        List<GpuMesh> texturedCheapOpaque = new ArrayList<>();
+        List<GpuMesh> texturedCheapFade = new ArrayList<>();
 
         for (LodRegionMesh mesh : meshes) {
             if (!mesh.terrainLit) {
@@ -2443,28 +2406,17 @@ public final class LodRegionMesh implements AutoCloseable {
         }
 
         boolean backfaceCullingEnabled = LodSettingsConfig.get().backfaceCullingEnabled();
-        boolean plainFogReady = LodFogShader.getPlainOrNull() != null;
-        boolean texturedFogReady = LodFogShader.getTexturedOrNull() != null;
-        RenderType plainOpaqueType = plainFogReady
-            ? (backfaceCullingEnabled ? LodTerrainRenderType.TERRAIN_FOG_OPAQUE : LodTerrainRenderType.TERRAIN_FOG_OPAQUE_NOCULL)
-            : (backfaceCullingEnabled ? LodTerrainRenderType.TERRAIN_OPAQUE : LodTerrainRenderType.TERRAIN_OPAQUE_NOCULL);
-        Supplier<ShaderInstance> plainOpaqueShader = plainFogReady ? LodFogShader::getPlainOrNull : GameRenderer::getPositionColorShader;
-        renderBucket(plainCheapOpaque, plainOpaqueType, plainOpaqueShader, modelViewMatrix, projectionMatrix);
-        RenderType plainFadeType = plainFogReady ? LodTerrainRenderType.TERRAIN_FOG : LodTerrainRenderType.TERRAIN;
-        Supplier<ShaderInstance> plainFadeShader = plainFogReady ? LodFogShader::getPlainOrNull : GameRenderer::getPositionColorShader;
-        renderBucket(plainCheapFade, plainFadeType, plainFadeShader, modelViewMatrix, projectionMatrix);
-        RenderType texturedOpaqueType = texturedFogReady
-            ? (backfaceCullingEnabled ? LodTerrainRenderType.TERRAIN_FOG_TEXTURED_OPAQUE : LodTerrainRenderType.TERRAIN_FOG_TEXTURED_OPAQUE_NOCULL)
-            : (backfaceCullingEnabled ? LodTerrainRenderType.TERRAIN_TEXTURED_OPAQUE : LodTerrainRenderType.TERRAIN_TEXTURED_OPAQUE_NOCULL);
-        Supplier<ShaderInstance> texturedOpaqueShader = texturedFogReady ? LodFogShader::getTexturedOrNull : GameRenderer::getPositionTexColorShader;
-        renderBucket(texturedCheapOpaque, texturedOpaqueType, texturedOpaqueShader, modelViewMatrix, projectionMatrix);
-        RenderType texturedFadeType = texturedFogReady ? LodTerrainRenderType.TERRAIN_FOG_TEXTURED : LodTerrainRenderType.TERRAIN_TEXTURED;
-        Supplier<ShaderInstance> texturedFadeShader = texturedFogReady ? LodFogShader::getTexturedOrNull : GameRenderer::getPositionTexColorShader;
-        renderBucket(texturedCheapFade, texturedFadeType, texturedFadeShader, modelViewMatrix, projectionMatrix);
+        LodGpu.Shape opaqueShape = backfaceCullingEnabled ? LodGpu.Shape.OPAQUE_CULL : LodGpu.Shape.OPAQUE_NOCULL;
+        boolean anyTextured = !texturedCheapOpaque.isEmpty() || !texturedCheapFade.isEmpty();
+        GpuTextureView atlas = anyTextured ? atlasView() : null;
+        LodGpu.drawMeshes(pass, state, LodGpu.Program.FOG_PLAIN, opaqueShape, plainCheapOpaque, null, null, null);
+        LodGpu.drawMeshes(pass, state, LodGpu.Program.FOG_PLAIN, LodGpu.Shape.FADE, plainCheapFade, null, null, null);
+        LodGpu.drawMeshes(pass, state, LodGpu.Program.FOG_TEX, opaqueShape, texturedCheapOpaque, atlas, LodGpu.atlasSampler(), null);
+        LodGpu.drawMeshes(pass, state, LodGpu.Program.FOG_TEX, LodGpu.Shape.FADE, texturedCheapFade, atlas, LodGpu.atlasSampler(), null);
     }
 
-    public static void renderWaterLit(List<LodRegionMesh> meshes, Matrix4f modelViewMatrix, Matrix4f projectionMatrix) {
-        List<VertexBuffer> litWater = new ArrayList<>();
+    public static void renderWaterLit(RenderPass pass, LodGpu.FrameState state, List<LodRegionMesh> meshes) {
+        List<GpuMesh> litWater = new ArrayList<>();
 
         for (LodRegionMesh mesh : meshes) {
             if (mesh.waterLit && mesh.terrainBufferWater != null) {
@@ -2472,11 +2424,11 @@ public final class LodRegionMesh implements AutoCloseable {
             }
         }
 
-        renderBucket(litWater, LodTerrainRenderType.WATER_LIT_TEXTURED, GameRenderer::getRendertypeSolidShader, modelViewMatrix, projectionMatrix);
+        LodGpu.drawMeshes(pass, state, LodGpu.Program.LIT_TEX, LodGpu.Shape.FADE, litWater, litWater.isEmpty() ? null : atlasView(), LodGpu.atlasSampler(), null);
     }
 
-    public static void renderWaterCheap(List<LodRegionMesh> meshes, Matrix4f modelViewMatrix, Matrix4f projectionMatrix) {
-        List<VertexBuffer> cheapWater = new ArrayList<>();
+    public static void renderWaterCheap(RenderPass pass, LodGpu.FrameState state, List<LodRegionMesh> meshes) {
+        List<GpuMesh> cheapWater = new ArrayList<>();
 
         for (LodRegionMesh mesh : meshes) {
             if (!mesh.waterLit && mesh.terrainBufferWater != null) {
@@ -2484,46 +2436,34 @@ public final class LodRegionMesh implements AutoCloseable {
             }
         }
 
-        if (!cheapWater.isEmpty()) {
-            boolean waterShaderReady = LodWaterShader.getTexturedOrNull() != null;
-            Supplier<ShaderInstance> shader = waterShaderReady ? LodWaterShader::getTexturedOrNull : GameRenderer::getPositionTexColorShader;
-            renderBucket(cheapWater, LodTerrainRenderType.WATER_TEXTURED, shader, modelViewMatrix, projectionMatrix);
-        }
+        LodGpu.drawMeshes(
+            pass, state, LodGpu.Program.WATER_TEX, LodGpu.Shape.FADE, cheapWater, cheapWater.isEmpty() ? null : atlasView(), LodGpu.atlasSampler(), null
+        );
     }
 
-    public static void renderTrees(List<LodRegionMesh> meshes, Matrix4f modelViewMatrix, Matrix4f projectionMatrix) {
-        Map<RenderType, List<VertexBuffer>> treeBuckets = new LinkedHashMap<>();
+    public static void renderTrees(RenderPass pass, LodGpu.FrameState state, List<LodRegionMesh> meshes) {
+        // key null = block atlas; otherwise a dedicated per-tree texture
+        Map<Identifier, List<GpuMesh>> treeBuckets = new LinkedHashMap<>();
+        List<GpuMesh> atlasTrees = new ArrayList<>();
 
         for (LodRegionMesh mesh : meshes) {
             for (LodRegionMesh.TreeMeshPart part : mesh.treeParts) {
-                treeBuckets.computeIfAbsent(part.renderType(), key -> new ArrayList<>()).add(part.buffer());
+                if (part.texture() == null) {
+                    atlasTrees.add(part.buffer());
+                } else {
+                    treeBuckets.computeIfAbsent(part.texture(), key -> new ArrayList<>()).add(part.buffer());
+                }
             }
         }
 
-        if (!treeBuckets.isEmpty()) {
-            boolean treeShaderReady = LodTreeShader.getOrNull() != null;
-            Supplier<ShaderInstance> shader = treeShaderReady ? LodTreeShader::getOrNull : GameRenderer::getPositionTexColorShader;
-
-            for (Entry<RenderType, List<VertexBuffer>> entry : treeBuckets.entrySet()) {
-                renderBucket(entry.getValue(), entry.getKey(), shader, modelViewMatrix, projectionMatrix);
-            }
+        if (!atlasTrees.isEmpty()) {
+            LodGpu.drawMeshes(pass, state, LodGpu.Program.TREE, LodGpu.Shape.OPAQUE_NOCULL, atlasTrees, atlasView(), LodGpu.atlasSampler(), null);
         }
-    }
 
-    private static void renderBucket(
-        List<VertexBuffer> buffers, RenderType renderType, Supplier<ShaderInstance> shader, Matrix4f modelViewMatrix, Matrix4f projectionMatrix
-    ) {
-        if (!buffers.isEmpty()) {
-            renderType.setupRenderState();
-            RenderSystem.setShader(shader);
-
-            for (VertexBuffer buffer : buffers) {
-                buffer.bind();
-                buffer.drawWithShader(modelViewMatrix, projectionMatrix, RenderSystem.getShader());
-                VertexBuffer.unbind();
-            }
-
-            renderType.clearRenderState();
+        for (Map.Entry<Identifier, List<GpuMesh>> entry : treeBuckets.entrySet()) {
+            GpuTextureView view = Minecraft.getInstance().getTextureManager().getTexture(entry.getKey()).getTextureView();
+            GpuSampler sampler = LodGpu.nearestSampler();
+            LodGpu.drawMeshes(pass, state, LodGpu.Program.TREE, LodGpu.Shape.OPAQUE_CULL, entry.getValue(), view, sampler, null);
         }
     }
 
@@ -2582,10 +2522,11 @@ public final class LodRegionMesh implements AutoCloseable {
     ) {
     }
 
-    private record RecordedTreePart(RenderType renderType, LodRegionMesh.RecordedPart part) {
+    /** texture == null means the block atlas. */
+    private record RecordedTreePart(Identifier texture, LodRegionMesh.RecordedPart part) {
     }
 
-    private record TreeMeshPart(RenderType renderType, VertexBuffer buffer) {
+    private record TreeMeshPart(Identifier texture, GpuMesh buffer) {
     }
 
     private enum TreePart {

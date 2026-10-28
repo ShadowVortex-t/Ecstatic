@@ -1,25 +1,17 @@
-// kinda sorta deprecated
-#version 150
+#version 330
+#extension GL_ARB_separate_shader_objects : require
 
-#moj_import <fog.glsl>
+#include <minecraft:fog.glsl>
+#include <minecraft:dynamictransforms.glsl>
+#include <ecstatic:ecstatic_params.glsl>
 
-uniform sampler2D Sampler2;
-uniform vec4 ColorModulator;
-uniform mat4 ModelViewMat;
-uniform vec3 SunDir;
-uniform float FogStart;
-uniform float FogEnd;
-uniform vec4 FogColor;
+layout(location = 0) in float vertexDistance;
+layout(location = 1) in vec4 vertexColor;
+layout(location = 2) in vec3 worldPos;
+layout(location = 3) in vec3 worldNormal;
+layout(location = 4) in vec3 eyePos;
 
-in vec4 vertexColor;
-in vec3 worldPos;
-in vec3 worldNormal;
-in vec3 eyePos;
-in float vertexDistance;
-flat in ivec2 lightMapCoord;
-
-out vec4 fragColor;
-
+layout(location = 0) out vec4 fragColor;
 
 #define TEXTURE_SCALE 0.05
 #define DOMAIN_WARP_STRENGTH 1.5
@@ -151,8 +143,8 @@ void main() {
 
 
     float shadow = 1.0;
-    if (steps > 0 && dot(n, SunDir) > 0.0) {
-        vec3 shadowStep = SunDir * (PARALLAX_DEPTH / float(MAX_STEPS));
+    if (steps > 0 && dot(n, EcsSunDir) > 0.0) {
+        vec3 shadowStep = EcsSunDir * (PARALLAX_DEPTH / float(MAX_STEPS));
         vec3 shadowPos = samplePos;
         float baseHeight = height;
         for (int i = 0; i < MAX_STEPS; i++) {
@@ -167,7 +159,7 @@ void main() {
                 break;
             }
         }
-    } else if (dot(n, SunDir) <= 0.0) {
+    } else if (dot(n, EcsSunDir) <= 0.0) {
         shadow = 0.6;
     }
 
@@ -178,11 +170,9 @@ void main() {
     albedo *= mix(1.0, shadow, 0.6);
 
 
-    vec4 lightColor = texelFetch(Sampler2, lightMapCoord, 0);
-    float lightMax = max(lightColor.r, max(lightColor.g, lightColor.b));
-    vec3 light = mix(vec3(1.0), lightColor.rgb, step(0.01, lightMax));
+    vec3 light = vec3(1.0);
 
     vec3 outColor = vertexColor.rgb * albedo * light;
     vec4 shaded = vec4(outColor, vertexColor.a) * ColorModulator;
-    fragColor = linear_fog(shaded, vertexDistance, FogStart, FogEnd, FogColor);
+    fragColor = ecs_linear_fog(shaded, vertexDistance, EcsFogStart, EcsFogEnd, FogColor);
 }
