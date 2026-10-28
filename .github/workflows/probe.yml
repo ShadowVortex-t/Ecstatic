@@ -1,20 +1,37 @@
 name: probe
 on:
+  workflow_dispatch:
   push:
     branches: [port-26.3]
-  workflow_dispatch:
+    paths: ['.github/workflows/probe.yml']
+permissions:
+  contents: write
 jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - name: NeoForge versions
+      - uses: actions/checkout@v4
+      - name: Collect info
         run: |
-          curl -s https://maven.neoforged.net/api/maven/versions/releases/net/neoforged/neoforge | python3 -c "
+          mkdir -p out
+          {
+            echo "== neoforge versions =="
+            curl -s https://maven.neoforged.net/api/maven/versions/releases/net/neoforged/neoforge | python3 -c "
           import sys,json
           v=json.load(sys.stdin)['versions']
           print('total',len(v))
-          print('26.x:',[x for x in v if x.startswith('26')][-60:])
+          print('26.x:',[x for x in v if x.startswith('26')][-80:])
           print('last:',v[-15:])"
-      - name: ModDevGradle versions
+            echo "== moddev plugin =="
+            curl -s https://plugins.gradle.org/m2/net/neoforged/moddev/net.neoforged.moddev.gradle.plugin/maven-metadata.xml | tail -15
+          } > out/probe.txt 2>&1
+      - name: Publish results branch
         run: |
-          curl -s https://plugins.gradle.org/m2/net/neoforged/moddev/net.neoforged.moddev.gradle.plugin/maven-metadata.xml | grep -E "<version>|latest|release" | tail -8
+          git config user.name github-actions
+          git config user.email actions@github.com
+          git checkout --orphan ci-output
+          git rm -rf . >/dev/null 2>&1 || true
+          cp out/probe.txt probe.txt
+          git add probe.txt
+          git commit -qm "probe results"
+          git push -f origin ci-output
