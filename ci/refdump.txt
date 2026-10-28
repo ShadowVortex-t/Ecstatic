@@ -1,0 +1,7 @@
+com/mojang/blaze3d
+net/minecraft/client/renderer
+net/minecraft/client/gui/GuiGraphics
+net/minecraft/client/Camera
+net/minecraft/client/KeyMapping
+net/minecraft/resources
+net/neoforged/neoforge/client/event

@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
   push:
     branches: [port-26.3]
-    paths-ignore: ['.github/workflows/probe.yml']
+    paths-ignore: ['.github/workflows/probe.yml','.github/workflows/refdump.yml','ci/**']
 permissions:
   contents: write
 jobs:

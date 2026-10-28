@@ -1,0 +1,50 @@
+name: refdump
+on:
+  workflow_dispatch:
+  push:
+    branches: [port-26.3]
+    paths: ['ci/refdump.txt']
+permissions:
+  contents: write
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Resolve jars
+        run: |
+          chmod +x gradlew
+          ./gradlew createMinecraftArtifacts --no-daemon > /dev/null 2>&1 || true
+          ls build/moddev/artifacts
+          cp build/moddev/artifacts/minecraft-patched-*.jar mc.jar
+          # neoforge jar (client events etc.)
+          NF=$(find ~/.gradle -name "neoforge-26.3*.jar" ! -name "*sources*" | head -1); echo "NF=$NF"; echo "$NF" > nf.txt
+      - name: Decompile requested prefixes
+        run: |
+          curl -sL -o vf.jar https://repo1.maven.org/maven2/org/vineflower/vineflower/1.11.1/vineflower-1.11.1.jar
+          mkdir -p in out
+          for jar in mc.jar "$(cat nf.txt)"; do
+            [ -f "$jar" ] || continue
+            while read -r p; do [ -z "$p" ] && continue; (cd in && unzip -qo "../$jar" "$p*" 2>/dev/null); done < ci/refdump.txt
+          done
+          find in -name '*.class' | wc -l
+          java -jar vf.jar -log=WARN -dgs=1 -hdc=0 -asc=1 -rsy=1 -lit=1 -e=mc.jar in out 2>&1 | tail -5 || true
+          unzip -l mc.jar | awk '{print $4}' | grep class$ > out/ALL_CLASSES_mc.txt || true
+          [ -f "$(cat nf.txt)" ] && unzip -l "$(cat nf.txt)" | awk '{print $4}' | grep class$ > out/ALL_CLASSES_nf.txt || true
+          find out -name '*.java' | wc -l
+      - name: Publish
+        run: |
+          git config user.name github-actions
+          git config user.email actions@github.com
+          tar czf ref.tar.gz -C out .
+          ls -la ref.tar.gz
+          git checkout --orphan ci-ref
+          git rm -rf . >/dev/null 2>&1 || true
+          git add -f ref.tar.gz 2>/dev/null || true
+          git commit -qm "ref dump" 
+          git push -f origin ci-ref
