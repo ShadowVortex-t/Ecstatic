@@ -31,7 +31,7 @@ public final class LodDebugCompare {
                 SurfaceSample sampled = SurfaceSampler.sample(level, blockX, blockZ);
                 int realHeight = level.getHeight(Types.OCEAN_FLOOR, blockX, blockZ);
                 Holder<Biome> realBiomeHolder = level.getBiome(new BlockPos(blockX, realHeight, blockZ));
-                int realBiomeId = level.registryAccess().registryOrThrow(Registries.BIOME).getId((Biome)realBiomeHolder.value());
+                int realBiomeId = level.registryAccess().lookupOrThrow(Registries.BIOME).getId((Biome)realBiomeHolder.value());
                 String message = String.format(
                     "compare @ (%d, %d): sampled height=%d biome=%d | real height=%d biome=%d | delta=%d",
                     blockX,
@@ -53,7 +53,7 @@ public final class LodDebugCompare {
 
     private static String savedChunkMessage(MinecraftServer server, ServerLevel level, int blockX, int blockZ, int realHeight) {
         try (SavedChunkAccess savedChunks = new SavedChunkAccess(
-                server.getWorldPath(LevelResource.ROOT), level.registryAccess().registryOrThrow(Registries.BIOME)
+                server.getWorldPath(LevelResource.ROOT), level.registryAccess().lookupOrThrow(Registries.BIOME)
             )) {
             if (!savedChunks.hasChunk(blockX >> 4, blockZ >> 4)) {
                 return "compare (saved): chunk not found on disk (unexpected - player is standing in it)";

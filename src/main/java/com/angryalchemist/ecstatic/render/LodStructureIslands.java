@@ -4,9 +4,7 @@ import com.angryalchemist.ecstatic.Constants;
 import com.angryalchemist.ecstatic.lod.StructureChunkLocator;
 import com.angryalchemist.ecstatic.storage.HeightmapColumn;
 import com.angryalchemist.ecstatic.storage.SavedChunkAccess;
-import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
-import com.mojang.blaze3d.vertex.VertexBuffer;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -17,8 +15,6 @@ import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicBoolean;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.client.renderer.GameRenderer;
-import net.minecraft.client.renderer.RenderType;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
@@ -30,7 +26,6 @@ import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.LevelResource;
 import net.minecraft.world.phys.Vec3;
-import org.joml.Matrix4f;
 
 final class LodStructureIslands {
     private static final Set<String> EXCLUDED_STRUCTURE_IDS = Set.of(
@@ -46,7 +41,6 @@ final class LodStructureIslands {
     private static final int SCAN_TOP_Y = 192;
     private static final int Y_MARGIN_BLOCKS = 4;
     private static final LodRegionMesh.FadeParams NO_FADE = new LodRegionMesh.FadeParams(-1073741824, -1073741824, -1073741824, 0.0F, 1.0F);
-    private static volatile VertexBuffer buffer;
     private static int builtChunkX = Integer.MIN_VALUE;
     private static int builtChunkZ = Integer.MIN_VALUE;
     private static final AtomicBoolean buildInFlight = new AtomicBoolean(false);
@@ -55,43 +49,6 @@ final class LodStructureIslands {
     private static final int SCAN_MISS = Integer.MIN_VALUE;
 
     private LodStructureIslands() {
-    }
-
-    static void render(Matrix4f modelViewMatrix, Matrix4f projectionMatrix, ClientLevel level, Vec3 cameraPos) {
-        MinecraftServer server = Minecraft.getInstance().getSingleplayerServer();
-        if (server != null) {
-            int chunkX = Math.floorDiv((int)Math.floor(cameraPos.x), 16);
-            int chunkZ = Math.floorDiv((int)Math.floor(cameraPos.z), 16);
-            if ((chunkX != builtChunkX || chunkZ != builtChunkZ) && buildInFlight.compareAndSet(false, true)) {
-                builtChunkX = chunkX;
-                builtChunkZ = chunkZ;
-                dispatchBuild(chunkX, chunkZ, Minecraft.getInstance().options.getEffectiveRenderDistance(), server, level);
-            }
-
-            LodRegionMesh.RecordedPart finished = pendingUpload;
-            if (finished != null) {
-                pendingUpload = null;
-                VertexBuffer old = buffer;
-                buffer = LodRegionMesh.uploadPart(finished);
-                if (old != null) {
-                    old.close();
-                }
-            }
-
-            VertexBuffer current = buffer;
-            if (current != null) {
-                boolean fogReady = LodFogShader.getTexturedOrNull() != null;
-                RenderType renderType = fogReady
-                    ? LodTerrainRenderType.TERRAIN_FOG_TEXTURED_OPAQUE_NOCULL
-                    : LodTerrainRenderType.TERRAIN_TEXTURED_OPAQUE_NOCULL;
-                renderType.setupRenderState();
-                RenderSystem.setShader(fogReady ? LodFogShader::getTexturedOrNull : GameRenderer::getPositionTexColorShader);
-                current.bind();
-                current.drawWithShader(modelViewMatrix, projectionMatrix, RenderSystem.getShader());
-                VertexBuffer.unbind();
-                renderType.clearRenderState();
-            }
-        }
     }
 
     static Set<Long> renderedChunks() {
@@ -123,7 +80,7 @@ final class LodStructureIslands {
     ) {
         RecordedVertexSink sink = new RecordedVertexSink();
         int[] vertexCount = new int[]{0};
-        Registry<Biome> biomeRegistry = level.registryAccess().registryOrThrow(Registries.BIOME);
+        Registry<Biome> biomeRegistry = level.registryAccess().lookupOrThrow(Registries.BIOME);
 
         try (SavedChunkAccess savedChunks = new SavedChunkAccess(server.getWorldPath(LevelResource.ROOT), biomeRegistry)) {
             int outerRadiusChunks = renderDistanceChunks + 12;

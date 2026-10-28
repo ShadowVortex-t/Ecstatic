@@ -1,5 +1,5 @@
 {
-    "key.categories.ecstatic": "Ecstatic",
+    "key.category.ecstatic.main": "Ecstatic",
     "key.ecstatic.cycle_vertex_format": "Cycle Vertex Format Override (Debug)",
     "key.ecstatic.cycle_forced_lod": "Cycle Forced LOD Level",
     "key.ecstatic.toggle_reference_quad": "Toggle Debug Reference Quad",

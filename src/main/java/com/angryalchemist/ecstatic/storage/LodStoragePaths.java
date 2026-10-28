@@ -15,7 +15,7 @@ public final class LodStoragePaths {
     }
 
     public static Path dimensionStorageDir(Path worldRoot, ResourceKey<Level> dimension) {
-        String dimensionDirName = dimension.location().getNamespace() + "_" + dimension.location().getPath();
+        String dimensionDirName = dimension.identifier().getNamespace() + "_" + dimension.identifier().getPath();
         Path current = worldRoot.resolve("ecstatic").resolve(dimensionDirName);
         if (Files.isDirectory(current)) {
             return current;

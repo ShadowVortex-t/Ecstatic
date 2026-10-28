@@ -36,7 +36,7 @@ import org.joml.Vector4f;
  * fog intensity, saturation, sun direction, game time) are packed into the otherwise unused texture matrix.
  * See {@code include/ecstatic_params.glsl}.
  */
-final class LodGpu {
+public final class LodGpu {
     /** Vertex format for the "lit" meshes: position, colour, uv, (full-bright) light uv and a normal. */
     static final VertexFormat LIT_FORMAT = VertexFormat.builder(0)
         .addAttribute("Position", GpuFormat.RGB32_FLOAT)
@@ -142,7 +142,7 @@ final class LodGpu {
         return builder.build();
     }
 
-    static void registerPipelines(RegisterRenderPipelinesEvent event) {
+    public static void registerPipelines(RegisterRenderPipelinesEvent event) {
         for (Map<Shape, RenderPipeline> byShape : PIPELINES.values()) {
             for (RenderPipeline pipeline : byShape.values()) {
                 event.registerPipeline(pipeline);
@@ -171,6 +171,10 @@ final class LodGpu {
 
     static GpuSampler atlasSampler() {
         return RenderSystem.getSamplerCache().getClampToEdge(FilterMode.LINEAR, true);
+    }
+
+    static GpuSampler repeatSampler() {
+        return RenderSystem.getSamplerCache().getRepeat(FilterMode.NEAREST);
     }
 
     static GpuSampler nearestSampler() {

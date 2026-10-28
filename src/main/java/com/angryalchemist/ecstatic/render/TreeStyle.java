@@ -3,7 +3,7 @@ package com.angryalchemist.ecstatic.render;
 import java.util.Set;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Registry;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.Biomes;
 import net.minecraft.world.level.block.Blocks;
@@ -120,24 +120,24 @@ final class TreeStyle {
         Blocks.OAK_LOG.defaultBlockState(),
         Blocks.OAK_LEAVES.defaultBlockState()
     );
-    private static final Set<ResourceLocation> CONIFER_BIOMES = Set.of(
-        Biomes.TAIGA.location(),
-        Biomes.OLD_GROWTH_PINE_TAIGA.location(),
-        Biomes.OLD_GROWTH_SPRUCE_TAIGA.location(),
-        Biomes.SNOWY_TAIGA.location(),
-        Biomes.GROVE.location()
+    private static final Set<Identifier> CONIFER_BIOMES = Set.of(
+        Biomes.TAIGA.identifier(),
+        Biomes.OLD_GROWTH_PINE_TAIGA.identifier(),
+        Biomes.OLD_GROWTH_SPRUCE_TAIGA.identifier(),
+        Biomes.SNOWY_TAIGA.identifier(),
+        Biomes.GROVE.identifier()
     );
-    private static final Set<ResourceLocation> BIRCH_BIOMES = Set.of(Biomes.BIRCH_FOREST.location(), Biomes.OLD_GROWTH_BIRCH_FOREST.location());
-    private static final Set<ResourceLocation> JUNGLE_BIOMES = Set.of(
-        Biomes.JUNGLE.location(), Biomes.BAMBOO_JUNGLE.location(), Biomes.SPARSE_JUNGLE.location()
+    private static final Set<Identifier> BIRCH_BIOMES = Set.of(Biomes.BIRCH_FOREST.identifier(), Biomes.OLD_GROWTH_BIRCH_FOREST.identifier());
+    private static final Set<Identifier> JUNGLE_BIOMES = Set.of(
+        Biomes.JUNGLE.identifier(), Biomes.BAMBOO_JUNGLE.identifier(), Biomes.SPARSE_JUNGLE.identifier()
     );
-    private static final Set<ResourceLocation> SAVANNA_BIOMES = Set.of(
-        Biomes.SAVANNA.location(), Biomes.SAVANNA_PLATEAU.location(), Biomes.WINDSWEPT_SAVANNA.location()
+    private static final Set<Identifier> SAVANNA_BIOMES = Set.of(
+        Biomes.SAVANNA.identifier(), Biomes.SAVANNA_PLATEAU.identifier(), Biomes.WINDSWEPT_SAVANNA.identifier()
     );
-    private static final Set<ResourceLocation> DARK_FOREST_BIOMES = Set.of(Biomes.DARK_FOREST.location());
-    private static final Set<ResourceLocation> SWAMP_BIOMES = Set.of(Biomes.SWAMP.location(), Biomes.MANGROVE_SWAMP.location());
-    private static final Set<ResourceLocation> CHERRY_BIOMES = Set.of(Biomes.CHERRY_GROVE.location());
-    private static final Set<ResourceLocation> BEACH_BIOMES = Set.of(Biomes.BEACH.location(), Biomes.SNOWY_BEACH.location());
+    private static final Set<Identifier> DARK_FOREST_BIOMES = Set.of(Biomes.DARK_FOREST.identifier());
+    private static final Set<Identifier> SWAMP_BIOMES = Set.of(Biomes.SWAMP.identifier(), Biomes.MANGROVE_SWAMP.identifier());
+    private static final Set<Identifier> CHERRY_BIOMES = Set.of(Biomes.CHERRY_GROVE.identifier());
+    private static final Set<Identifier> BEACH_BIOMES = Set.of(Biomes.BEACH.identifier(), Biomes.SNOWY_BEACH.identifier());
 
     private TreeStyle(
         TreeStyle.Group group,
@@ -185,7 +185,7 @@ final class TreeStyle {
             if (biome == null) {
                 return DEFAULT;
             } else {
-                ResourceLocation key = biomeRegistry.getKey(biome);
+                Identifier key = biomeRegistry.getKey(biome);
                 if (key == null) {
                     return DEFAULT;
                 } else if (CONIFER_BIOMES.contains(key)) {

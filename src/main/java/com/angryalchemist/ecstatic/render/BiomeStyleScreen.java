@@ -10,7 +10,7 @@ import java.util.Locale;
 import java.util.function.Consumer;
 import java.util.function.IntConsumer;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Checkbox;
 import net.minecraft.client.gui.components.EditBox;
@@ -93,22 +93,21 @@ public final class BiomeStyleScreen extends Screen {
         this.addRenderableWidget(Button.builder(Component.literal("Done"), b -> this.onClose()).bounds(centerX + 5, y, 100, 20).build());
     }
 
-    public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-        this.renderBackground(guiGraphics, mouseX, mouseY, partialTick);
-        super.render(guiGraphics, mouseX, mouseY, partialTick);
-        guiGraphics.drawCenteredString(this.font, this.title, this.width / 2, 15, 16777215);
-        guiGraphics.drawCenteredString(this.font, titleCase(this.group.name()), this.width / 2, 46, 16777215);
+    public void extractRenderState(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
+        super.extractRenderState(guiGraphics, mouseX, mouseY, partialTick);
+        guiGraphics.centeredText(this.font, this.title, this.width / 2, 15, 16777215);
+        guiGraphics.centeredText(this.font, titleCase(this.group.name()), this.width / 2, 46, 16777215);
         this.drawSwatch(guiGraphics, this.trunkTintBox, this.config.trunkTint(this.group));
         this.drawSwatch(guiGraphics, this.foliageTintBox, this.config.foliageTint(this.group));
         this.drawSwatch(guiGraphics, this.groundTintBox, this.config.entry(this.group).groundTint);
         int waterColumnCenterX = this.waterColorBox.getX() + this.waterColorBox.getWidth() / 2;
-        guiGraphics.drawCenteredString(this.font, "Water", waterColumnCenterX, this.waterLabelY, 16777215);
+        guiGraphics.centeredText(this.font, "Water", waterColumnCenterX, this.waterLabelY, 16777215);
         this.drawSwatch(guiGraphics, this.waterColorBox, this.config.waterColor());
         int snowColumnCenterX = this.snowHeightBox.getX() + this.snowHeightBox.getWidth() / 2;
-        guiGraphics.drawCenteredString(this.font, "Snow %", snowColumnCenterX, this.waterLabelY, 16777215);
+        guiGraphics.centeredText(this.font, "Snow %", snowColumnCenterX, this.waterLabelY, 16777215);
     }
 
-    private void drawSwatch(GuiGraphics guiGraphics, EditBox box, int rgb) {
+    private void drawSwatch(GuiGraphicsExtractor guiGraphics, EditBox box, int rgb) {
         int x0 = box.getX() + box.getWidth() + 8;
         int y0 = box.getY();
         guiGraphics.fill(x0, y0, x0 + 20, y0 + box.getHeight(), 0xFF000000 | rgb & 16777215);

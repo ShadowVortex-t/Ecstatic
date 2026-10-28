@@ -51,7 +51,7 @@ public class Ecstatic {
             int workerThreadCount = LodSettingsConfig.get().workerThreadCount();
             ChunkGenerator generator = overworld.getChunkSource().getGenerator();
             RandomState randomState = overworld.getChunkSource().randomState();
-            Registry<Biome> biomeRegistry = overworld.registryAccess().registryOrThrow(Registries.BIOME);
+            Registry<Biome> biomeRegistry = overworld.registryAccess().lookupOrThrow(Registries.BIOME);
             LevelHeightAccessor heightAccessor = new FixedHeightAccessor(overworld.getMinBuildHeight(), overworld.getMaxBuildHeight());
             Thread startupThread = new Thread(
                 () -> {

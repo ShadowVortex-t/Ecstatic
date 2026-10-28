@@ -1,7 +1,7 @@
 package com.angryalchemist.ecstatic.render;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Checkbox;
 import net.minecraft.client.gui.screens.Screen;
@@ -67,11 +67,10 @@ final class LodDebugSettingsScreen extends Screen {
         return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
     }
 
-    public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-        this.renderBackground(guiGraphics, mouseX, mouseY, partialTick);
-        super.render(guiGraphics, mouseX, mouseY, partialTick);
-        guiGraphics.drawCenteredString(this.font, this.title, this.width / 2, 15, 16777215);
-        guiGraphics.drawCenteredString(this.font, "These settings are potentially game breaking! Leaving them unchecked is highly advised", this.width / 2, 32, 8421504);
+    public void extractRenderState(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
+        super.extractRenderState(guiGraphics, mouseX, mouseY, partialTick);
+        guiGraphics.centeredText(this.font, this.title, this.width / 2, 15, 16777215);
+        guiGraphics.centeredText(this.font, "These settings are potentially game breaking! Leaving them unchecked is highly advised", this.width / 2, 32, 8421504);
         if (this.maxScroll > 0) {
             int centerX = this.width / 2;
             int trackX = centerX + 130 + 10;

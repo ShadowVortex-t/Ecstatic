@@ -19,7 +19,7 @@ import java.util.Locale;
 import java.util.Map;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.DynamicTexture;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 final class BiomeStyleConfig {
     private static final String WATER_KEY = "WATER";
@@ -34,8 +34,8 @@ final class BiomeStyleConfig {
     private final Map<TreeStyle.Group, BiomeStyleConfig.Entry> entries = new EnumMap<>(TreeStyle.Group.class);
     private final Map<TreeStyle.Group, DynamicTexture> trunkTextures = new EnumMap<>(TreeStyle.Group.class);
     private final Map<TreeStyle.Group, DynamicTexture> foliageTextures = new EnumMap<>(TreeStyle.Group.class);
-    private final Map<TreeStyle.Group, ResourceLocation> trunkTextureIds = new EnumMap<>(TreeStyle.Group.class);
-    private final Map<TreeStyle.Group, ResourceLocation> foliageTextureIds = new EnumMap<>(TreeStyle.Group.class);
+    private final Map<TreeStyle.Group, Identifier> trunkTextureIds = new EnumMap<>(TreeStyle.Group.class);
+    private final Map<TreeStyle.Group, Identifier> foliageTextureIds = new EnumMap<>(TreeStyle.Group.class);
     private BiomeStyleConfig.WaterEntry water = new BiomeStyleConfig.WaterEntry(DEFAULT_WATER_COLOR, 0.99F);
     private BiomeStyleConfig.SnowEntry snow = new BiomeStyleConfig.SnowEntry(48.0F);
     private BiomeStyleConfig.IceEntry ice = new BiomeStyleConfig.IceEntry(11062752);
@@ -137,11 +137,11 @@ final class BiomeStyleConfig {
         this.ice.color = rgb;
     }
 
-    ResourceLocation trunkTextureId(TreeStyle.Group group) {
+    Identifier trunkTextureId(TreeStyle.Group group) {
         return this.trunkTextureIds.get(group);
     }
 
-    ResourceLocation foliageTextureId(TreeStyle.Group group) {
+    Identifier foliageTextureId(TreeStyle.Group group) {
         return this.foliageTextureIds.get(group);
     }
 
@@ -256,7 +256,7 @@ final class BiomeStyleConfig {
         this.foliageTextureIds.put(group, this.loadTexture(group, "foliage", this.entries.get(group).foliageTexture, this.foliageTextures));
     }
 
-    private ResourceLocation loadTexture(TreeStyle.Group group, String part, String fileName, Map<TreeStyle.Group, DynamicTexture> cache) {
+    private Identifier loadTexture(TreeStyle.Group group, String part, String fileName, Map<TreeStyle.Group, DynamicTexture> cache) {
         DynamicTexture previous = cache.remove(group);
         if (previous != null) {
             previous.close();
@@ -274,7 +274,7 @@ final class BiomeStyleConfig {
         try (InputStream in = Files.newInputStream(path)) {
             NativeImage image = NativeImage.read(in);
             DynamicTexture texture = new DynamicTexture(image);
-            ResourceLocation id = ResourceLocation.fromNamespaceAndPath("ecstatic", "biome_style/" + group.name().toLowerCase(Locale.ROOT) + "_" + part);
+            Identifier id = Identifier.fromNamespaceAndPath("ecstatic", "biome_style/" + group.name().toLowerCase(Locale.ROOT) + "_" + part);
             Minecraft.getInstance().getTextureManager().register(id, texture);
             cache.put(group, texture);
             return id;

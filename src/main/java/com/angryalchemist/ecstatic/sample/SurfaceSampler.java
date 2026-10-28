@@ -11,7 +11,7 @@ import net.minecraft.core.HolderSet;
 import net.minecraft.core.QuartPos;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.LevelHeightAccessor;
 import net.minecraft.world.level.biome.Biome;
@@ -40,8 +40,8 @@ public final class SurfaceSampler {
     private static final int GRASS_COLOR_BLEND_RADIUS = 2; // radius to blend terrain color
     private static final Map<Biome, Boolean> hasTreesCache = new ConcurrentHashMap<>(); //caches biome tree data. computed once per biome instance. 
     private static final Method SURFACE_SYSTEM_GET_BAND = resolveGetBandMethod(); // vanilla's terracotta band gen
-    private static final Set<ResourceLocation> BADLANDS_BIOMES = Set.of(
-            Biomes.BADLANDS.location(), Biomes.ERODED_BADLANDS.location(), Biomes.WOODED_BADLANDS.location());
+    private static final Set<Identifier> BADLANDS_BIOMES = Set.of(
+            Biomes.BADLANDS.identifier(), Biomes.ERODED_BADLANDS.identifier(), Biomes.WOODED_BADLANDS.identifier());
 
     private SurfaceSampler() {
     }
@@ -77,7 +77,7 @@ public final class SurfaceSampler {
     public static SurfaceSample sample(ServerLevel level, int blockX, int blockZ) {
         ChunkGenerator generator = level.getChunkSource().getGenerator();
         RandomState randomState = level.getChunkSource().randomState();
-        Registry<Biome> biomeRegistry = level.registryAccess().registryOrThrow(Registries.BIOME);
+        Registry<Biome> biomeRegistry = level.registryAccess().lookupOrThrow(Registries.BIOME);
         return sample(generator, randomState, biomeRegistry, level, blockX, blockZ, Integer.MIN_VALUE);
     }
 
@@ -104,7 +104,7 @@ public final class SurfaceSampler {
         );
         Biome biome = (Biome)biomeHolder.value();
         int biomeRawId = biomeRegistry.getId(biome);
-        ResourceLocation biomeKey = biomeRegistry.getKey(biome);
+        Identifier biomeKey = biomeRegistry.getKey(biome);
         int colorRgb = (biomeKey != null && BADLANDS_BIOMES.contains(biomeKey))
                 ? badlandsColor(randomState, biome, blockX, height, blockZ)
                 : averagedGrassColor(biome, blockX, blockZ);

@@ -6,10 +6,9 @@ import com.angryalchemist.ecstatic.debug.LodDebugState;
 import com.angryalchemist.ecstatic.render.BiomeStyleScreen;
 import com.angryalchemist.ecstatic.render.LodRenderer;
 import com.angryalchemist.ecstatic.render.LodSettingsScreen;
-import com.mojang.blaze3d.shaders.FogShape;
+import net.minecraft.client.renderer.fog.FogData;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.FogRenderer.FogMode;
 import net.minecraft.util.Mth;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.LivingEntity;
@@ -17,12 +16,10 @@ import net.minecraft.world.level.material.FogType;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
-import net.neoforged.neoforge.client.event.RenderLevelStageEvent.Stage;
 import net.neoforged.neoforge.client.event.ViewportEvent.RenderFog;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
-import org.joml.Matrix4f;
 
 @EventBusSubscriber(modid = "ecstatic", value = Dist.CLIENT)
 public final class ForgeClientRenderEvents {
@@ -32,30 +29,25 @@ public final class ForgeClientRenderEvents {
     }
 
     @SubscribeEvent
-    public static void onRenderLevelStage(RenderLevelStageEvent event) {
-        if (event.getStage() == Stage.AFTER_PARTICLES) {
-            LodRenderer.captureTrueRotation(new Matrix4f(event.getModelViewMatrix()));
-            LodRenderer.render(event.getProjectionMatrix(), event.getCamera());
-        }
+    public static void onRenderLevelStage(RenderLevelStageEvent.AfterTranslucentParticles event) {
+        LodRenderer.render(event.getRenderPass(), event.getLevelRenderState());
     }
 
     @SubscribeEvent
     public static void onRenderFog(RenderFog event) {
-        if (event.getMode() == FogMode.FOG_TERRAIN && event.getType() == FogType.NONE) {
-            if (LodRenderer.isOverworldLoaded()) {
-                Camera camera = event.getCamera();
-                if (!(camera.getEntity() instanceof LivingEntity living && (living.hasEffect(MobEffects.BLINDNESS) || living.hasEffect(MobEffects.DARKNESS)))) {
-                    Minecraft client = Minecraft.getInstance();
-                    Vec3 pos = camera.getPosition();
-                    boolean isFoggy = client.level.effects().isFoggyAt(Mth.floor(pos.x), Mth.floor(pos.y))
-                        || client.gui.getBossOverlay().shouldCreateWorldFog();
-                    if (!isFoggy) {
-                        float farPlaneDistance = event.getFarPlaneDistance();
-                        event.setNearPlaneDistance(farPlaneDistance * 100.0F);
-                        event.setFarPlaneDistance(farPlaneDistance * 100.0F * 12.0F);
-                        event.setFogShape(FogShape.CYLINDER); // so that going up really high doesn't leave a visual hole in the world
-                        event.setCanceled(true);
-                    }
+        if (event.getType() == FogType.NONE && LodRenderer.isOverworldLoaded()) {
+            Camera camera = event.getCamera();
+            if (!(camera.entity() instanceof LivingEntity living && (living.hasEffect(MobEffects.BLINDNESS) || living.hasEffect(MobEffects.DARKNESS)))) {
+                Minecraft client = Minecraft.getInstance();
+                Vec3 pos = camera.position();
+                boolean isFoggy = client.level.effects().isFoggyAt(Mth.floor(pos.x), Mth.floor(pos.y))
+                    || client.gui.getBossOverlay().shouldCreateWorldFog();
+                if (!isFoggy) {
+                    // push the vanilla render-distance fog far out so it doesn't hide the LOD terrain
+                    FogData fog = event.getFogData();
+                    float renderDistanceEnd = fog.renderDistanceEnd;
+                    fog.renderDistanceStart = renderDistanceEnd * FOG_DISABLE_MULTIPLIER;
+                    fog.renderDistanceEnd = renderDistanceEnd * FOG_DISABLE_MULTIPLIER * 12.0F;
                 }
             }
         }

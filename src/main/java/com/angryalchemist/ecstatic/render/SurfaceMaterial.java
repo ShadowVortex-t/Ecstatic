@@ -10,7 +10,7 @@ import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Registry;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.Biomes;
@@ -20,16 +20,16 @@ import net.minecraft.world.level.block.state.BlockState;
 final class SurfaceMaterial {
     private static final float DIRT_SLOPE_START = 0.6F;
     private static final float STONE_SLOPE_START = 1.25F;
-    private static final Set<ResourceLocation> SAND_BIOMES = Set.of(
-        Biomes.DESERT.location(),
-        Biomes.BEACH.location(),
-        Biomes.SNOWY_BEACH.location(),
-        Biomes.WARM_OCEAN.location(),
-        Biomes.LUKEWARM_OCEAN.location(),
-        Biomes.DEEP_LUKEWARM_OCEAN.location()
+    private static final Set<Identifier> SAND_BIOMES = Set.of(
+        Biomes.DESERT.identifier(),
+        Biomes.BEACH.identifier(),
+        Biomes.SNOWY_BEACH.identifier(),
+        Biomes.WARM_OCEAN.identifier(),
+        Biomes.LUKEWARM_OCEAN.identifier(),
+        Biomes.DEEP_LUKEWARM_OCEAN.identifier()
     );
-    private static final Set<ResourceLocation> BADLANDS_BIOMES = Set.of(
-        Biomes.BADLANDS.location(), Biomes.ERODED_BADLANDS.location(), Biomes.WOODED_BADLANDS.location()
+    private static final Set<Identifier> BADLANDS_BIOMES = Set.of(
+        Biomes.BADLANDS.identifier(), Biomes.ERODED_BADLANDS.identifier(), Biomes.WOODED_BADLANDS.identifier()
     );
     static final SurfaceMaterial GRASS = new SurfaceMaterial(
         SurfaceMaterial.Kind.GRASS, Blocks.GRASS_BLOCK.defaultBlockState(), Blocks.DIRT.defaultBlockState()
@@ -97,7 +97,7 @@ final class SurfaceMaterial {
 
     static SurfaceMaterial classify(HeightmapColumn column, Registry<Biome> biomeRegistry, float slope, int blockX, int blockZ) {
         Biome biome = biomeOf(biomeRegistry, column.biomeRawId());
-        ResourceLocation biomeKey = biome != null ? biomeRegistry.getKey(biome) : null;
+        Identifier biomeKey = biome != null ? biomeRegistry.getKey(biome) : null;
         boolean tooSteepForSnow = slope >= 1.25F;
         boolean coldEnoughToSnow = biome != null && biome.coldEnoughToSnow(new BlockPos(blockX, column.height(), blockZ));
         if (!tooSteepForSnow && coldEnoughToSnow) {
@@ -113,7 +113,7 @@ final class SurfaceMaterial {
         }
     }
 
-    static boolean isSandBiome(ResourceLocation biomeKey) {
+    static boolean isSandBiome(Identifier biomeKey) {
         return biomeKey != null && SAND_BIOMES.contains(biomeKey);
     }
 

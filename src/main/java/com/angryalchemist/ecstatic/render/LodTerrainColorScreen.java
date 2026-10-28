@@ -8,7 +8,7 @@ import java.util.EnumMap;
 import java.util.Map;
 import java.util.Map.Entry;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
@@ -49,15 +49,14 @@ final class LodTerrainColorScreen extends Screen {
         this.addRenderableWidget(Button.builder(Component.literal("Done"), b -> this.onClose()).bounds(centerX + 54, footerY, 100, 20).build());
     }
 
-    public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-        renderBackground(guiGraphics, mouseX, mouseY, partialTick);
-        super.render(guiGraphics, mouseX, mouseY, partialTick);
-        guiGraphics.drawCenteredString(this.font, this.title, this.width / 2, 14, 16777215);
-        guiGraphics.drawCenteredString(this.font, "Hex tint, FFFFFF = unchanged. Applies on Save.", this.width / 2, 28, 8421504);
+    public void extractRenderState(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
+        super.extractRenderState(guiGraphics, mouseX, mouseY, partialTick);
+        guiGraphics.centeredText(this.font, this.title, this.width / 2, 14, 16777215);
+        guiGraphics.centeredText(this.font, "Hex tint, FFFFFF = unchanged. Applies on Save.", this.width / 2, 28, 8421504);
 
         for (Entry<SurfaceMaterial.Kind, EditBox> entry : this.fields.entrySet()) {
             EditBox box = entry.getValue();
-            guiGraphics.drawString(this.font, label(entry.getKey()), box.getX() - 96, box.getY() + 6, 16777215);
+            guiGraphics.text(this.font, label(entry.getKey()), box.getX() - 96, box.getY() + 6, 16777215);
             int rgb = parseHexOr(box.getValue(), this.config.nearTerrainTint(entry.getKey()));
             int x0 = box.getX() + box.getWidth() + 8;
             guiGraphics.fill(x0, box.getY(), x0 + 20, box.getY() + box.getHeight(), 0xFF000000 | rgb & 16777215);
