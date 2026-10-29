@@ -295,9 +295,10 @@ public final class LodRenderer {
             counts.append(" L").append(level).append('=').append(m == null ? 0 : m.size());
         }
 
+        RegionLodCoordinator coordinatorForLog = Ecstatic.activeCoordinator();
         Constants.LOG.info(
-            "Ecstatic status: coordinator={} meshes[{} ] pendingBuilds={} fadeBuilds={} camera=({}, {}, {}) renderDistance={}",
-            Ecstatic.activeCoordinator() != null, counts, pendingCoordinatorBuilds.size(), pendingFadeBuilds.size(),
+            "Ecstatic status: coordinator={} [{}] meshes[{} ] pendingBuilds={} fadeBuilds={} camera=({}, {}, {}) renderDistance={}",
+            coordinatorForLog != null, coordinatorForLog == null ? "-" : coordinatorForLog.summary(), counts, pendingCoordinatorBuilds.size(), pendingFadeBuilds.size(),
             (int) cameraPos.x, (int) cameraPos.y, (int) cameraPos.z, Minecraft.getInstance().options.getEffectiveRenderDistance()
         );
     }

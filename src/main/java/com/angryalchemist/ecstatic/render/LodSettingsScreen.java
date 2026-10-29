@@ -57,12 +57,8 @@ public final class LodSettingsScreen extends Screen {
         renderDistance.visible = y >= viewportTop && y + WIDGET_HEIGHT <= viewportBottom;
         this.addRenderableWidget(renderDistance);
         y += ROW_STRIDE;
-        StringWidget warningWidget = new StringWidget(
-                this.width,
-                WIDGET_HEIGHT,
-                Component.literal("Going above 100% render distance may cause lag"),
-                this.font
-        );
+        StringWidget warningWidget = new StringWidget(Component.literal("Going above 100% render distance may cause lag"), this.font);
+        warningWidget.setX(centerX - warningWidget.getWidth() / 2);
         warningWidget.setY(y);
         warningWidget.visible = y >= viewportTop && y + 10 <= viewportBottom;
         this.addRenderableWidget(warningWidget);
@@ -91,12 +87,8 @@ public final class LodSettingsScreen extends Screen {
         workerThreads.visible = y >= viewportTop && y + WIDGET_HEIGHT <= viewportBottom;
         this.addRenderableWidget(workerThreads);
         y += ROW_STRIDE;
-        StringWidget warningWidget2 = new StringWidget(
-                this.width,
-                WIDGET_HEIGHT,
-                Component.literal("Going above 75% of your cores WILL cause lag"),
-                this.font
-        );
+        StringWidget warningWidget2 = new StringWidget(Component.literal("Going above 75% of your cores WILL cause lag"), this.font);
+        warningWidget2.setX(centerX - warningWidget2.getWidth() / 2);
         warningWidget2.setY(y);
         warningWidget2.visible = y >= viewportTop && y + 10 <= viewportBottom;
         this.addRenderableWidget(warningWidget2);

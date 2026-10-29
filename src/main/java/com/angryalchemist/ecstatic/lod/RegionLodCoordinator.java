@@ -18,6 +18,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BooleanSupplier;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
@@ -55,6 +56,10 @@ public final class RegionLodCoordinator {
     private final List<RegionLodCoordinator.Worker> workers = new CopyOnWriteArrayList<>();
     private int nextWorkerIndex;
     private volatile boolean shuttingDown;
+    private final AtomicInteger tasksStarted = new AtomicInteger();
+    private final AtomicInteger tasksFinished = new AtomicInteger();
+    private final AtomicInteger tasksSkipped = new AtomicInteger();
+    private final AtomicInteger tasksQueued = new AtomicInteger();
     private boolean hasLastScanPos;
     private double lastScanChunkX;
     private double lastScanChunkZ;
@@ -113,14 +118,25 @@ public final class RegionLodCoordinator {
             if (task != null) {
             
                 if (!task.isValid().getAsBoolean()) {
-               
+                    this.tasksSkipped.incrementAndGet();
                     continue;
+                }
+
+                int startedIndex = this.tasksStarted.incrementAndGet();
+                long startNanos = System.nanoTime();
+                if (startedIndex <= 12) {
+                    Constants.LOG.info("Ecstatic worker starting task #{} level={} region={}", startedIndex, task.level(), task.region());
                 }
 
                 try {
                     task.action().run();
                 } catch (Throwable t) {
                     Constants.LOG.error("Ecstatic region worker task failed unexpectedly", t);
+                }
+
+                int finishedIndex = this.tasksFinished.incrementAndGet();
+                if (finishedIndex <= 12) {
+                    Constants.LOG.info("Ecstatic worker finished task level={} region={} in {} ms", task.level(), task.region(), (System.nanoTime() - startNanos) / 1000000L);
                 }
             }
         }
@@ -148,6 +164,12 @@ public final class RegionLodCoordinator {
         }
     }
     
+    public String summary() {
+        return "queued=" + this.tasksQueued.get() + " started=" + this.tasksStarted.get() + " finished=" + this.tasksFinished.get()
+            + " skipped=" + this.tasksSkipped.get() + " pending=" + this.pendingTasks.size() + " inFlight=" + this.inFlight.size()
+            + " bootstrapInFlight=" + this.bootstrapInFlight.size() + " workers=" + this.workers.size();
+    }
+
     public LodRegionFile fileForLevel(int level) {
         return this.filesByLevel.get(level);
     }
@@ -242,6 +264,7 @@ public final class RegionLodCoordinator {
                     } else {
                         if (targetLevel <= 3 && !this.bootstrapInFlight.contains(region) && !this.bootstrapFile.isFullySampled(region)) {
                             this.bootstrapInFlight.add(region);
+                            this.tasksQueued.incrementAndGet();
                             this.pendingTasks.put(new RegionLodCoordinator.SampleTask(
                                     BOOTSTRAP_PRIORITY, distanceChunks, region,
                                     () -> this.bootstrapInFlight.contains(region),
@@ -251,6 +274,7 @@ public final class RegionLodCoordinator {
                     }
                     this.inFlight.add(region);
                     int finalTargetLevel = targetLevel;
+                    this.tasksQueued.incrementAndGet();
                     this.pendingTasks.put(new RegionLodCoordinator.SampleTask(
                             finalTargetLevel, distanceChunks, region,
                             () -> this.inFlight.contains(region),
