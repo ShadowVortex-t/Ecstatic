@@ -1,8 +1,10 @@
 package com.angryalchemist.ecstatic.render;
 
+import com.mojang.blaze3d.buffers.Std140Builder;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.renderpearl.api.GpuFormat;
+import com.mojang.renderpearl.api.buffers.GpuBuffer;
 import com.mojang.renderpearl.api.buffers.GpuBufferSlice;
 import com.mojang.renderpearl.api.commands.RenderPass;
 import com.mojang.renderpearl.api.pipeline.BlendFunction;
@@ -15,18 +17,19 @@ import com.mojang.renderpearl.api.textures.FilterMode;
 import com.mojang.renderpearl.api.textures.GpuSampler;
 import com.mojang.renderpearl.api.textures.GpuTextureView;
 import com.mojang.renderpearl.api.vertex.VertexFormat;
+import java.nio.ByteBuffer;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import net.minecraft.client.renderer.BindGroupLayouts;
 import net.minecraft.client.renderer.DynamicGpuData;
-import net.minecraft.client.renderer.ProjectionMatrixBuffer;
 import net.minecraft.resources.Identifier;
 import net.neoforged.neoforge.client.event.RegisterRenderPipelinesEvent;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.joml.Vector3fc;
 import org.joml.Vector4f;
+import org.lwjgl.system.MemoryStack;
 
 /**
  * Pipelines, per-frame uniforms and draw helpers for the 26.x renderer.
@@ -105,7 +108,9 @@ public final class LodGpu {
         add(Program.CLOUD, Shape.TRANSLUCENT_DEPTH);
     }
 
-    private static ProjectionMatrixBuffer projectionBuffer;
+    /** Ring of per-frame projection UBOs; each is created with its data so no command is recorded inside the open render pass. */
+    private static final GpuBuffer[] PROJECTION_RING = new GpuBuffer[4];
+    private static int projectionRingIndex;
 
     private LodGpu() {
     }
@@ -162,11 +167,20 @@ public final class LodGpu {
 
     /** Uploads the extended-far-plane projection to the GPU; one value is used per frame. */
     static GpuBufferSlice uploadProjection(Matrix4f projection) {
-        if (projectionBuffer == null) {
-            projectionBuffer = new ProjectionMatrixBuffer("ecstatic");
+        projectionRingIndex = (projectionRingIndex + 1) % PROJECTION_RING.length;
+        GpuBuffer old = PROJECTION_RING[projectionRingIndex];
+        if (old != null) {
+            old.close();
         }
 
-        return projectionBuffer.getBuffer(projection);
+        GpuBuffer buffer;
+        try (MemoryStack stack = MemoryStack.stackPush()) {
+            ByteBuffer data = Std140Builder.onStack(stack, RenderSystem.PROJECTION_MATRIX_UBO_SIZE).putMat4f(projection).get();
+            buffer = RenderSystem.getDevice().createBuffer(() -> "Ecstatic projection UBO", GpuBuffer.USAGE_UNIFORM, data);
+        }
+
+        PROJECTION_RING[projectionRingIndex] = buffer;
+        return buffer.slice(0L, RenderSystem.PROJECTION_MATRIX_UBO_SIZE);
     }
 
     static GpuSampler atlasSampler() {
@@ -258,9 +272,12 @@ public final class LodGpu {
     }
 
     static void close() {
-        if (projectionBuffer != null) {
-            projectionBuffer.close();
-            projectionBuffer = null;
+        for (int i = 0; i < PROJECTION_RING.length; i++) {
+            if (PROJECTION_RING[i] != null) {
+                PROJECTION_RING[i].close();
+                PROJECTION_RING[i] = null;
+            }
         }
+
     }
 }
