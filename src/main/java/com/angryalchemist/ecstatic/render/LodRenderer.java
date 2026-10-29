@@ -296,6 +296,9 @@ public final class LodRenderer {
         }
 
         RegionLodCoordinator coordinatorForLog = Ecstatic.activeCoordinator();
+        if (coordinatorForLog != null) {
+            coordinatorForLog.logWorkerStacksIfStuck();
+        }
         Constants.LOG.info(
             "Ecstatic status: coordinator={} [{}] meshes[{} ] pendingBuilds={} fadeBuilds={} camera=({}, {}, {}) renderDistance={}",
             coordinatorForLog != null, coordinatorForLog == null ? "-" : coordinatorForLog.summary(), counts, pendingCoordinatorBuilds.size(), pendingFadeBuilds.size(),

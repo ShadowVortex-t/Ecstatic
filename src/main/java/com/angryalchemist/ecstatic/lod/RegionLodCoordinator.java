@@ -170,6 +170,27 @@ public final class RegionLodCoordinator {
             + " bootstrapInFlight=" + this.bootstrapInFlight.size() + " workers=" + this.workers.size();
     }
 
+    private int stackDumpsLogged;
+
+    /** Logs where busy worker threads currently are; called from the render status line a few times when tasks are not finishing. */
+    public void logWorkerStacksIfStuck() {
+        if (this.stackDumpsLogged >= 4 || this.tasksStarted.get() <= this.tasksFinished.get()) {
+            return;
+        }
+
+        this.stackDumpsLogged++;
+        for (RegionLodCoordinator.Worker worker : this.workers) {
+            Thread t = worker.thread;
+            StackTraceElement[] frames = t.getStackTrace();
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < Math.min(frames.length, 16); i++) {
+                sb.append("\n    at ").append(frames[i]);
+            }
+
+            Constants.LOG.info("Ecstatic worker stack [{}] state={}{}", t.getName(), t.getState(), sb);
+        }
+    }
+
     public LodRegionFile fileForLevel(int level) {
         return this.filesByLevel.get(level);
     }

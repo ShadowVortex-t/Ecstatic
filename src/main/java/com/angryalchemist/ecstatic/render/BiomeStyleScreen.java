@@ -12,7 +12,6 @@ import java.util.function.IntConsumer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.components.Checkbox;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
@@ -28,7 +27,6 @@ public final class BiomeStyleScreen extends Screen {
     private EditBox trunkTintBox;
     private EditBox foliageTintBox;
     private EditBox groundTintBox;
-    private Checkbox groundTintEnabledCheckbox;
     private Button trunkTextureButton;
     private Button foliageTextureButton;
     private EditBox waterColorBox;
@@ -73,7 +71,7 @@ public final class BiomeStyleScreen extends Screen {
         this.waterOpacityBox.setMaxLength(3);
         this.waterOpacityBox.setValue(toPercent(this.config.waterAlpha()));
         this.waterOpacityBox.setResponder(this::applyWaterOpacityPercent);
-        int rightColumnX = this.groundTintEnabledCheckbox.getX() + this.groundTintEnabledCheckbox.getWidth() + 20;
+        int rightColumnX = centerX + 70;
         this.snowHeightBox = (EditBox)this.addRenderableWidget(new EditBox(this.font, rightColumnX, foliageRowY, 80, 20, Component.literal("Snow Height")));
         this.snowHeightBox.setMaxLength(3);
         this.snowHeightBox.setValue(String.valueOf(Math.round(this.config.snowHeightPercent())));
