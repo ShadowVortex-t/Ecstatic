@@ -46,6 +46,8 @@ public final class SurfaceSampler {
     private static final Set<Identifier> BADLANDS_BIOMES = Set.of(
             Biomes.BADLANDS.identifier(), Biomes.ERODED_BADLANDS.identifier(), Biomes.WOODED_BADLANDS.identifier());
 
+    private static final java.util.concurrent.atomic.AtomicInteger TIMING_LOGS = new java.util.concurrent.atomic.AtomicInteger();
+
     private SurfaceSampler() {
     }
     /**
@@ -99,14 +101,20 @@ public final class SurfaceSampler {
         int blockZ,
         int expectedHeightHint
     ) {
-        DensitySampler finalDensity = finalDensitySampler(generator, randomState);
-        int height = finalDensity != null
-            ? findSurfaceHeight(finalDensity, heightAccessor, blockX, blockZ, expectedHeightHint)
-            : generator.getBaseHeight(blockX, blockZ, Heightmap.Types.WORLD_SURFACE_WG, heightAccessor, randomState);
+        // 26.x evaluates the density router in whole volumes, so per-point density marching is extremely slow.
+        // Ask the generator for the column height instead (ocean floor so seabed terrain keeps its real height).
+        long t0 = System.nanoTime();
+        int height = generator.getBaseHeight(blockX, blockZ, Heightmap.Types.OCEAN_FLOOR_WG, heightAccessor, randomState);
+        long t1 = System.nanoTime();
         BiomeResolver resolver = biomeResolver(generator.getBiomeSource(), randomState);
         Holder<Biome> biomeHolder = resolver.getNoiseBiome(
             QuartPos.fromBlock(blockX), QuartPos.fromBlock(height), QuartPos.fromBlock(blockZ)
         );
+        long t2 = System.nanoTime();
+        if (TIMING_LOGS.getAndIncrement() < 8) {
+            Constants.LOG.info("Ecstatic sample timing: height={} us, biome={} us (x={}, z={}, y={})", (t1 - t0) / 1000L, (t2 - t1) / 1000L, blockX, blockZ, height);
+        }
+
         Biome biome = (Biome)biomeHolder.value();
         int biomeRawId = biomeRegistry.getId(biome);
         Identifier biomeKey = biomeRegistry.getKey(biome);
