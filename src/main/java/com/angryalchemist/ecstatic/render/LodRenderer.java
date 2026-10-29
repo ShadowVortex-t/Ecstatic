@@ -127,6 +127,8 @@ public final class LodRenderer {
         float minBuildHeight = clientLevel.getMinY();
         float maxBuildHeight = clientLevel.getMaxY() + 1;
         int forcedLevel = LodDebugState.forcedLevel();
+        
+        logStatus(cameraPos);
         List<LodRegionMesh> visibleMeshes = new ArrayList<>();
         List<LodRegionMesh> visiblePlaceholderMeshes = new ArrayList<>();
 
@@ -276,6 +278,28 @@ public final class LodRenderer {
                 .info(
                         "Ecstatic renderer: client render distance={} chunks, graphics mode={}, vanilla far clip plane ~= {} blocks (LOD rings beyond this are frustum-clipped)",
                         renderDistanceChunks, Minecraft.getInstance().options.cloudStatus().get(), farPlaneBlocks);
+    }
+
+    private static long lastStatusLogMs;
+
+    private static void logStatus(Vec3 cameraPos) {
+        long now = System.currentTimeMillis();
+        if (now - lastStatusLogMs < 10000L) {
+            return;
+        }
+
+        lastStatusLogMs = now;
+        StringBuilder counts = new StringBuilder();
+        for (int level : LOD_LEVELS) {
+            Map<RegionCoord, LodRegionMesh> m = meshesByLevel.get(level);
+            counts.append(" L").append(level).append('=').append(m == null ? 0 : m.size());
+        }
+
+        Constants.LOG.info(
+            "Ecstatic status: coordinator={} meshes[{} ] pendingBuilds={} fadeBuilds={} camera=({}, {}, {}) renderDistance={}",
+            Ecstatic.activeCoordinator() != null, counts, pendingCoordinatorBuilds.size(), pendingFadeBuilds.size(),
+            (int) cameraPos.x, (int) cameraPos.y, (int) cameraPos.z, Minecraft.getInstance().options.getEffectiveRenderDistance()
+        );
     }
 
     private static float extendedFarPlaneBlocks(int clientRenderDistanceChunks) {

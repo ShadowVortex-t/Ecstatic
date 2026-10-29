@@ -23,6 +23,7 @@ public final class ForgeClientKeyBindings {
 
     @SubscribeEvent
     public static void onRegisterKeyMappings(RegisterKeyMappingsEvent event) {
+        com.angryalchemist.ecstatic.Constants.LOG.info("Ecstatic: registering key mappings");
         event.registerCategory(CATEGORY);
         event.register(CYCLE_VERTEX_FORMAT_KEY);
         event.register(CYCLE_FORCED_LOD_KEY);

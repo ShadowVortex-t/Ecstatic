@@ -43,6 +43,7 @@ public class Ecstatic {
 
     public static synchronized void onServerStarted(ServerLevel overworld) {
         MinecraftServer server = overworld.getServer();
+        Constants.LOG.info("Ecstatic: server started, starting LOD coordinator");
         if (startingServer == server) {
             Constants.LOG.warn("Ecstatic dynamic coordinator already starting for this server, skipping duplicate run");
         } else {
@@ -59,7 +60,8 @@ public class Ecstatic {
                         activeCoordinator = new RegionLodCoordinator(
                             generator, randomState, biomeRegistry, heightAccessor, storageDir, 28, 32, 64, 34, 124, 4, workerThreadCount
                         );
-                    } catch (IOException e) {
+                        Constants.LOG.info("Ecstatic: LOD coordinator started (storage {})", storageDir);
+                    } catch (Throwable e) {
                         Constants.LOG.error("Ecstatic failed to start the dynamic region coordinator", e);
                     } finally {
                         startingServer = null;
