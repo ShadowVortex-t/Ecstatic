@@ -205,14 +205,17 @@ public final class LodSettingsConfig {
         this.data.lodRenderDistanceScale = Mth.clamp(lodRenderDistanceScale, 0.25F, 2.0F);
     }
 
+    /** Hard cap on LOD worker threads: half the cores, so the render and server threads always have room (matters a lot on phones). */
+    public static int maxWorkerThreads() {
+        return Math.max(1, Runtime.getRuntime().availableProcessors() / 2);
+    }
+
     public int workerThreadCount() {
-        int maxThreads = Math.max(1, Runtime.getRuntime().availableProcessors());
-        return Mth.clamp(this.data.workerThreadCount, 1, maxThreads);
+        return Mth.clamp(this.data.workerThreadCount, 1, maxWorkerThreads());
     }
 
     void setWorkerThreadCount(int workerThreadCount) {
-        int maxThreads = Math.max(1, Runtime.getRuntime().availableProcessors());
-        this.data.workerThreadCount = Mth.clamp(workerThreadCount, 1, maxThreads);
+        this.data.workerThreadCount = Mth.clamp(workerThreadCount, 1, maxWorkerThreads());
     }
 
     float fogFalloffScale() {
@@ -297,7 +300,7 @@ public final class LodSettingsConfig {
         int tintTerracotta = 16777215;
         int lod1SubStepBlocks = 2;
         float lodRenderDistanceScale = 0.9F;
-        int workerThreadCount = Math.max(1, Math.round(Runtime.getRuntime().availableProcessors() * 0.7F));
+        int workerThreadCount = Math.max(1, Math.round(Runtime.getRuntime().availableProcessors() * 0.25F));
         float fogFalloffScale = 0.95F;
         float fogIntensity = 1.0F;
     }

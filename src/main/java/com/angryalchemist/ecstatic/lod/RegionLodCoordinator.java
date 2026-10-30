@@ -147,6 +147,7 @@ public final class RegionLodCoordinator {
         int index = this.nextWorkerIndex++;
         worker.thread = new Thread(() -> this.runWorkerLoop(worker), "Ecstatic-Region-Worker-" + index);
         worker.thread.setDaemon(true);
+        worker.thread.setPriority(Thread.MIN_PRIORITY);
         worker.thread.start();
         return worker;
     }

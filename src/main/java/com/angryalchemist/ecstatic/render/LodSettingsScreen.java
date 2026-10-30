@@ -63,7 +63,7 @@ public final class LodSettingsScreen extends Screen {
         warningWidget.visible = y >= viewportTop && y + 10 <= viewportBottom;
         this.addRenderableWidget(warningWidget);
         y += ROW_STRIDE;
-        final int maxThreads = Math.max(1, Runtime.getRuntime().availableProcessors());
+        final int maxThreads = LodSettingsConfig.maxWorkerThreads();
         double workerThreadsInitialValue = this.threadsValueFromCount(this.config.workerThreadCount(), maxThreads);
         int workerThreadsInitialCount = this.threadsFromValue(workerThreadsInitialValue, maxThreads);
         AbstractSliderButton workerThreads = new AbstractSliderButton(
@@ -71,12 +71,12 @@ public final class LodSettingsScreen extends Screen {
             y,
             CHECKBOX_WIDTH,
                 WIDGET_HEIGHT,
-            Component.literal("Worker threads: " + workerThreadsInitialCount + " / " + maxThreads + " detected"),
+            Component.literal("Worker threads: " + workerThreadsInitialCount + " / " + maxThreads + " max"),
             workerThreadsInitialValue
         ) {
             protected void updateMessage() {
                 this.setMessage(
-                    Component.literal("Worker threads: " + LodSettingsScreen.this.threadsFromValue(this.value, maxThreads) + " / " + maxThreads + " detected")
+                    Component.literal("Worker threads: " + LodSettingsScreen.this.threadsFromValue(this.value, maxThreads) + " / " + maxThreads + " max")
                 );
             }
 
@@ -87,7 +87,7 @@ public final class LodSettingsScreen extends Screen {
         workerThreads.visible = y >= viewportTop && y + WIDGET_HEIGHT <= viewportBottom;
         this.addRenderableWidget(workerThreads);
         y += ROW_STRIDE;
-        StringWidget warningWidget2 = new StringWidget(Component.literal("Going above 75% of your cores WILL cause lag"), this.font);
+        StringWidget warningWidget2 = new StringWidget(Component.literal("More threads fill the LOD faster but can cause lag"), this.font);
         warningWidget2.setX(centerX - warningWidget2.getWidth() / 2);
         warningWidget2.setY(y);
         warningWidget2.visible = y >= viewportTop && y + 10 <= viewportBottom;

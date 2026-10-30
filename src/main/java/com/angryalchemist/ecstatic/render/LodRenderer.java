@@ -115,7 +115,8 @@ public final class LodRenderer {
         modelViewMatrix.mul(camera.viewRotationMatrix);
         Matrix4f rotationOnlyMatrix = new Matrix4f(modelViewMatrix);
         modelViewMatrix.translate(-((float) cameraPos.x), -((float) cameraPos.y), -((float) cameraPos.z));
-        float dayFraction = clamp01((clientLevel.getSkyDarken() - 0.2F) / 0.8F);
+        // 26.x: getSkyDarken() is an int 0 (full day) .. 15 (night); the 1.21.1 API returned a fraction where 1 meant full day
+        float dayFraction = clamp01(1.0F - clientLevel.getSkyDarken() / 15.0F);
         float night = LodSettingsConfig.get().nightBrightness();
         float day = LodSettingsConfig.get().dayBrightness();
         float brightness = night + (day - night) * dayFraction;
