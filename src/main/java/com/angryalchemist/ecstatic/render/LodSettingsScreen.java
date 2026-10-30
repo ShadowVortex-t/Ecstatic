@@ -71,12 +71,12 @@ public final class LodSettingsScreen extends Screen {
             y,
             CHECKBOX_WIDTH,
                 WIDGET_HEIGHT,
-            Component.literal("Worker threads: " + workerThreadsInitialCount + " / " + maxThreads + " max"),
+            Component.literal("Worker threads: " + workerThreadsInitialCount + " / " + maxThreads + " detected"),
             workerThreadsInitialValue
         ) {
             protected void updateMessage() {
                 this.setMessage(
-                    Component.literal("Worker threads: " + LodSettingsScreen.this.threadsFromValue(this.value, maxThreads) + " / " + maxThreads + " max")
+                    Component.literal("Worker threads: " + LodSettingsScreen.this.threadsFromValue(this.value, maxThreads) + " / " + maxThreads + " detected")
                 );
             }
 
@@ -87,7 +87,7 @@ public final class LodSettingsScreen extends Screen {
         workerThreads.visible = y >= viewportTop && y + WIDGET_HEIGHT <= viewportBottom;
         this.addRenderableWidget(workerThreads);
         y += ROW_STRIDE;
-        StringWidget warningWidget2 = new StringWidget(Component.literal("More threads fill the LOD faster but can cause lag"), this.font);
+        StringWidget warningWidget2 = new StringWidget(Component.literal("Going above 75% of your cores WILL cause lag"), this.font);
         warningWidget2.setX(centerX - warningWidget2.getWidth() / 2);
         warningWidget2.setY(y);
         warningWidget2.visible = y >= viewportTop && y + 10 <= viewportBottom;

@@ -205,9 +205,9 @@ public final class LodSettingsConfig {
         this.data.lodRenderDistanceScale = Mth.clamp(lodRenderDistanceScale, 0.25F, 2.0F);
     }
 
-    /** Hard cap on LOD worker threads: half the cores, so the render and server threads always have room (matters a lot on phones). */
+    /** Upper bound for LOD worker threads: every detected core. */
     public static int maxWorkerThreads() {
-        return Math.max(1, Runtime.getRuntime().availableProcessors() / 2);
+        return Math.max(1, Runtime.getRuntime().availableProcessors());
     }
 
     public int workerThreadCount() {
