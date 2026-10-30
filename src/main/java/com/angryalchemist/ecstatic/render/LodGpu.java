@@ -104,13 +104,14 @@ public final class LodGpu {
         add(Program.LIT_TEX, Shape.OPAQUE_CULL, Shape.OPAQUE_NOCULL, Shape.FADE);
         add(Program.PARALLAX, Shape.TRANSLUCENT_DEPTH);
         add(Program.WATER_TEX, Shape.FADE);
-        add(Program.TREE, Shape.OPAQUE_CULL);
+        add(Program.TREE, Shape.OPAQUE_CULL, Shape.OPAQUE_NOCULL);
         add(Program.CLOUD, Shape.TRANSLUCENT_DEPTH);
     }
 
     /** Ring of per-frame projection UBOs; each is created with its data so no command is recorded inside the open render pass. */
     private static final GpuBuffer[] PROJECTION_RING = new GpuBuffer[4];
     private static int projectionRingIndex;
+    private static final java.util.Set<String> MISSING_PIPELINES_LOGGED = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
     private LodGpu() {
     }
@@ -248,6 +249,15 @@ public final class LodGpu {
         Matrix4f modelViewOverride
     ) {
         if (meshes.isEmpty()) {
+            return;
+        }
+
+        Map<Shape, RenderPipeline> registered = PIPELINES.get(program);
+        if (registered == null || !registered.containsKey(shape)) {
+            if (MISSING_PIPELINES_LOGGED.add(program + "/" + shape)) {
+                com.angryalchemist.ecstatic.Constants.LOG.error("Ecstatic has no pipeline for {}/{}; skipping those draws", program, shape);
+            }
+
             return;
         }
 
