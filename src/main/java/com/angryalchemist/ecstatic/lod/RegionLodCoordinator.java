@@ -54,6 +54,8 @@ public final class RegionLodCoordinator {
     private final ConcurrentLinkedQueue<RegionCoord> bootstrapReady = new ConcurrentLinkedQueue<>();
     private final PriorityBlockingQueue<RegionLodCoordinator.SampleTask> pendingTasks = new PriorityBlockingQueue<>();
     private final List<RegionLodCoordinator.Worker> workers = new CopyOnWriteArrayList<>();
+    // Workers removed by adjustWorkerThreadCount that may still be finishing a task; shutdown must wait for them too.
+    private final List<RegionLodCoordinator.Worker> retiredWorkers = new CopyOnWriteArrayList<>();
     private int nextWorkerIndex;
     private volatile boolean shuttingDown;
     private final AtomicInteger tasksStarted = new AtomicInteger();
@@ -162,7 +164,10 @@ public final class RegionLodCoordinator {
         while (this.workers.size() > target) {
             Worker worker = this.workers.remove(this.workers.size() - 1);
             worker.retire = true;
+            this.retiredWorkers.add(worker);
         }
+
+        this.retiredWorkers.removeIf(retired -> !retired.thread.isAlive());
     }
     
     public String summary() {
@@ -435,17 +440,22 @@ public final class RegionLodCoordinator {
 public synchronized void shutdown() {
         this.shuttingDown = true;
 
-        for (RegionLodCoordinator.Worker worker : this.workers) {
+        List<RegionLodCoordinator.Worker> allWorkers = new ArrayList<>(this.workers);
+        allWorkers.addAll(this.retiredWorkers);
+
+        for (RegionLodCoordinator.Worker worker : allWorkers) {
             worker.thread.interrupt();
         }
 
-        for (RegionLodCoordinator.Worker worker : this.workers) {
+        for (RegionLodCoordinator.Worker worker : allWorkers) {
             try {
                 worker.thread.join();
             } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
+                Thread.currentThread().interrupt();
             }
         }
+
+        this.retiredWorkers.clear();
 
         for (LodRegionFile file : this.filesByLevel.values()) {
             try {
