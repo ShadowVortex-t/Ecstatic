@@ -110,6 +110,8 @@ public final class LodGpu {
 
     /** Ring of per-frame projection UBOs; each is created with its data so no command is recorded inside the open render pass. */
     private static final GpuBuffer[] PROJECTION_RING = new GpuBuffer[4];
+    private static final Matrix4f lastProjection = new Matrix4f();
+    private static GpuBuffer lastProjectionBuffer;
     private static int projectionRingIndex;
     private static final java.util.Set<String> MISSING_PIPELINES_LOGGED = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
@@ -168,6 +170,11 @@ public final class LodGpu {
 
     /** Uploads the extended-far-plane projection to the GPU; one value is used per frame. */
     static GpuBufferSlice uploadProjection(Matrix4f projection) {
+        // The projection only changes with FOV/window size, so reuse the last buffer when unchanged.
+        if (lastProjectionBuffer != null && lastProjection.equals(projection)) {
+            return lastProjectionBuffer.slice(0L, RenderSystem.PROJECTION_MATRIX_UBO_SIZE);
+        }
+
         projectionRingIndex = (projectionRingIndex + 1) % PROJECTION_RING.length;
         GpuBuffer old = PROJECTION_RING[projectionRingIndex];
         if (old != null) {
@@ -181,6 +188,8 @@ public final class LodGpu {
         }
 
         PROJECTION_RING[projectionRingIndex] = buffer;
+        lastProjectionBuffer = buffer;
+        lastProjection.set(projection);
         return buffer.slice(0L, RenderSystem.PROJECTION_MATRIX_UBO_SIZE);
     }
 
@@ -289,5 +298,6 @@ public final class LodGpu {
             }
         }
 
+        lastProjectionBuffer = null;
     }
 }

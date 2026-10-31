@@ -356,15 +356,21 @@ public final class RegionLodCoordinator {
     private void sampleColumns(RegionCoord region, LodRegionFile file, int spacing) throws IOException {
         int last = file.samplesPerAxis - 1;
 
+        int[] grid = SurfaceSampler.sampleHeightGrid(
+            this.generator, this.randomState, this.heightAccessor, region.originBlockX(), region.originBlockZ(), spacing, last + 1
+        );
+
         for (int lz = 0; lz <= last; lz++) {
             int prevHeightInRow = Integer.MIN_VALUE;
 
             for (int lx = 0; lx <= last; lx++) {
                 int blockX = region.originBlockX() + lx * spacing;
                 int blockZ = region.originBlockZ() + lz * spacing;
-                SurfaceSample sample = SurfaceSampler.sample(
-                    this.generator, this.randomState, this.biomeRegistry, this.heightAccessor, blockX, blockZ, prevHeightInRow
-                );
+                SurfaceSample sample = grid != null
+                    ? SurfaceSampler.sampleWithHeight(this.generator, this.randomState, this.biomeRegistry, blockX, blockZ, grid[lz * (last + 1) + lx])
+                    : SurfaceSampler.sample(
+                        this.generator, this.randomState, this.biomeRegistry, this.heightAccessor, blockX, blockZ, prevHeightInRow
+                    );
                 prevHeightInRow = sample.height();
                 writeSample(file, region, lx, lz, sample);
             }
