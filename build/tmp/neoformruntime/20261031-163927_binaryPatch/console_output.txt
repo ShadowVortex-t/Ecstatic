@@ -1,0 +1,22 @@
+--------------------------------------------------------------------------------
+
+Command-Line:
+ - /usr/lib/jvm/temurin-25-jdk-amd64/bin/java
+ - -jar
+ - /home/runner/.gradle/caches/neoformruntime/artifacts/net/neoforged/installertools/binarypatcher/4.0.17/binarypatcher-4.0.17-fatjar.jar
+ - --patch
+ - --base
+ - /home/runner/.gradle/caches/neoformruntime/intermediate_results/preProcessJar_5199224795d14b5024ed8f876653bf8587335074_output.jar
+ - --base-type
+ - JOINED
+ - --output
+ - ./output.jar
+ - --patches
+ - ./patches.lzma
+--------------------------------------------------------------------------------
+
+Applying: 
+  Base:      /home/runner/.gradle/caches/neoformruntime/intermediate_results/preProcessJar_5199224795d14b5024ed8f876653bf8587335074_output.jar
+  Base Type: JOINED
+  Output:    /home/runner/work/Ecstatic/Ecstatic/build/tmp/neoformruntime/20261031-163927_binaryPatch/./output.jar
+  Patches:   [./patches.lzma]

@@ -1,0 +1,6 @@
+/home/runner/.gradle/caches/modules-2/files-2.1/net.neoforged/neoforge/26.3.0.99/5931ed4eb8ffe37bed014cdd99b28d79c38229e0/neoforge-26.3.0.99-userdev.jar
+/home/runner/.gradle/caches/modules-2/files-2.1/net.neoforged/neoforge/26.3.0.99/215117e7a679a38b75f88b5d4254adaffd596452/neoforge-26.3.0.99-universal.jar
+/home/runner/.gradle/caches/modules-2/files-2.1/net.neoforged/neoforge/26.3.0.99/545387d0732e23dc38219f708fbbbb942ece687e/neoforge-26.3.0.99-sources.jar
+/home/runner/.gradle/caches/neoformruntime/artifacts/minecraft_26.3_client.jar
+/home/runner/.gradle/caches/neoformruntime/artifacts/minecraft_26.3_server.jar
+/home/runner/work/Ecstatic/Ecstatic/build/moddev/artifacts/minecraft-patched-26.3.0.99.jar

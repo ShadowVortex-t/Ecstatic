@@ -1,0 +1,26 @@
+--------------------------------------------------------------------------------
+
+Command-Line:
+ - /usr/lib/jvm/temurin-25-jdk-amd64/bin/java
+ - --sun-misc-unsafe-memory-access=allow
+ - -jar
+ - /home/runner/.gradle/caches/modules-2/files-2.1/net.neoforged.installertools/installertools/4.0.12/94b6e47c3f51f8ca40f8c54720369a952b821e95/installertools-4.0.12-fatjar.jar
+ - --task
+ - PROCESS_MINECRAFT_JAR
+ - --input
+ - /home/runner/.gradle/caches/neoformruntime/intermediate_results/copyUnpatchedClasses_f95cb6d7b885596698ea45542056d62ef70a5f20_output.jar
+ - --output
+ - ./output.jar
+ - --no-mod-manifest
+ - --access-transformer
+ - ats/accesstransformergenerated.cfg
+ - --access-transformer
+ - ats/accesstransformer.cfg
+--------------------------------------------------------------------------------
+
+Task: PROCESS_MINECRAFT_JAR
+load access transformers [51ms]
+load input zip [664ms]
+apply dev transforms [347ms]
+write output file [2191ms]
+overall work [3274ms]
