@@ -198,11 +198,11 @@ public final class LodSettingsConfig {
     }
 
     public float lodRenderDistanceScale() {
-        return Mth.clamp(this.data.lodRenderDistanceScale, 0.25F, 2.0F);
+        return Mth.clamp(this.data.lodRenderDistanceScale, 0.05F, 2.0F);
     }
 
     void setLodRenderDistanceScale(float lodRenderDistanceScale) {
-        this.data.lodRenderDistanceScale = Mth.clamp(lodRenderDistanceScale, 0.25F, 2.0F);
+        this.data.lodRenderDistanceScale = Mth.clamp(lodRenderDistanceScale, 0.05F, 2.0F);
     }
 
     /** Upper bound for LOD worker threads: every detected core. */

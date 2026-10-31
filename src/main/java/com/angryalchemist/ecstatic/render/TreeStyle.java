@@ -109,6 +109,17 @@ final class TreeStyle {
         Blocks.CHERRY_LOG.defaultBlockState(),
         Blocks.CHERRY_LEAVES.defaultBlockState()
     );
+    private static final TreeStyle POPLAR = new TreeStyle(
+        TreeStyle.Group.POPLAR,
+        9341566,
+        14264619,
+        7.5F,
+        6.0F,
+        2.6F,
+        TreeStyle.CanopyShape.ROUND,
+        Blocks.POPLAR_LOG.defaultBlockState(),
+        Blocks.YELLOW_POPLAR_LEAVES.defaultBlockState()
+    );
     private static final TreeStyle BEACH = new TreeStyle(
         TreeStyle.Group.BEACH,
         9073493,
@@ -137,6 +148,7 @@ final class TreeStyle {
     private static final Set<Identifier> DARK_FOREST_BIOMES = Set.of(Biomes.DARK_FOREST.identifier());
     private static final Set<Identifier> SWAMP_BIOMES = Set.of(Biomes.SWAMP.identifier(), Biomes.MANGROVE_SWAMP.identifier());
     private static final Set<Identifier> CHERRY_BIOMES = Set.of(Biomes.CHERRY_GROVE.identifier());
+    private static final Set<Identifier> POPLAR_BIOMES = Set.of(Biomes.DAPPLED_FOREST.identifier());
     private static final Set<Identifier> BEACH_BIOMES = Set.of(Biomes.BEACH.identifier(), Biomes.SNOWY_BEACH.identifier());
 
     private TreeStyle(
@@ -202,6 +214,8 @@ final class TreeStyle {
                     return SWAMP;
                 } else if (CHERRY_BIOMES.contains(key)) {
                     return CHERRY;
+                } else if (POPLAR_BIOMES.contains(key)) {
+                    return POPLAR;
                 } else {
                     return BEACH_BIOMES.contains(key) ? BEACH : DEFAULT;
                 }
@@ -218,6 +232,7 @@ final class TreeStyle {
             case DARK_FOREST -> DARK_FOREST;
             case SWAMP -> SWAMP;
             case CHERRY -> CHERRY;
+            case POPLAR -> POPLAR;
             case BEACH -> BEACH;
             case DEFAULT -> DEFAULT;
         };
@@ -238,6 +253,7 @@ final class TreeStyle {
         DARK_FOREST,
         SWAMP,
         CHERRY,
+        POPLAR,
         BEACH;
     }
 }

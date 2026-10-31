@@ -1,5 +1,6 @@
 package com.angryalchemist.ecstatic.render;
 
+import com.angryalchemist.ecstatic.lod.RingConfig;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractSliderButton;
@@ -17,7 +18,7 @@ public final class LodSettingsScreen extends Screen {
     private static final int FOOTER_HEIGHT = 44;
     private static final int SCROLLBAR_WIDTH = 6;
     private static final double SCROLL_SPEED = 16.0;
-    private static final int RENDER_DISTANCE_MIN_PERCENT = 25;
+    private static final int RENDER_DISTANCE_MIN_PERCENT = 5;
     private static final int RENDER_DISTANCE_MAX_PERCENT = 200;
     private static final int SLIDER_STEP_PERCENT = 5;
     private static final int FOG_FALLOFF_MIN_PERCENT = 25;
@@ -44,10 +45,10 @@ public final class LodSettingsScreen extends Screen {
         double renderDistanceInitialValue = valueFromPercent(Math.round(this.config.lodRenderDistanceScale() * 100.0F), RENDER_DISTANCE_MIN_PERCENT, RENDER_DISTANCE_MAX_PERCENT);
         int renderDistanceInitialPercent = percentFromValue(renderDistanceInitialValue, RENDER_DISTANCE_MIN_PERCENT, RENDER_DISTANCE_MAX_PERCENT, SLIDER_STEP_PERCENT);
         AbstractSliderButton renderDistance = new AbstractSliderButton(
-            centerX - 130, y, CHECKBOX_WIDTH, WIDGET_HEIGHT, Component.literal("Render distance: " + renderDistanceInitialPercent + "%"), renderDistanceInitialValue
+            centerX - 130, y, CHECKBOX_WIDTH, WIDGET_HEIGHT, Component.literal(renderDistanceLabel(renderDistanceInitialPercent)), renderDistanceInitialValue
         ) {
             protected void updateMessage() {
-                this.setMessage(Component.literal("Render distance: " + LodSettingsScreen.percentFromValue(this.value, RENDER_DISTANCE_MIN_PERCENT, RENDER_DISTANCE_MAX_PERCENT, SLIDER_STEP_PERCENT) + "%"));
+                this.setMessage(Component.literal(LodSettingsScreen.renderDistanceLabel(LodSettingsScreen.percentFromValue(this.value, RENDER_DISTANCE_MIN_PERCENT, RENDER_DISTANCE_MAX_PERCENT, SLIDER_STEP_PERCENT))));
             }
 
             protected void applyValue() {
@@ -165,6 +166,13 @@ public final class LodSettingsScreen extends Screen {
             int thumbY = trackTop + (int)((trackHeight - thumbHeight) * (this.scrollAmount / this.maxScroll));
             guiGraphics.fill(trackX, thumbY, trackX + SCROLLBAR_WIDTH, thumbY + thumbHeight, -4144960);
         }
+    }
+
+    /** "Render distance: 90% (N chunks)" where N is how far out the LOD rings reach at that percentage. */
+    private static String renderDistanceLabel(int percent) {
+        int clientDistance = Minecraft.getInstance().options.getEffectiveRenderDistance();
+        RingConfig rings = RingConfig.scaled(RingConfig.ring1StartChunks(clientDistance), 28, 32, 64, 12, 24, 4, percent / 100.0F);
+        return "Render distance: " + percent + "% (" + rings.outerBoundary(5) + " chunks)";
     }
 
     private static int percentFromValue(double value, int minPercent, int maxPercent, int stepPercent) {
