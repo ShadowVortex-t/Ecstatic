@@ -24,10 +24,7 @@ import net.minecraft.world.level.biome.BiomeResolver;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.NoiseBasedChunkGenerator;
 import net.minecraft.world.level.levelgen.RandomState;
-import net.minecraft.world.level.levelgen.densityfunction.DensityBuffer;
 import net.minecraft.world.level.levelgen.densityfunction.DensitySampler;
-import net.minecraft.world.level.levelgen.densityfunction.DensityVolume;
-import net.minecraft.world.level.levelgen.densityfunction.ScopedDensityBuffer;
 import net.minecraft.world.level.levelgen.densityfunction.SamplerContext;
 import net.minecraft.world.level.levelgen.material.MaterialSystem;
 import net.minecraft.world.level.levelgen.GenerationStep.Decoration;
@@ -104,24 +101,19 @@ public final class SurfaceSampler {
         int blockZ,
         int expectedHeightHint
     ) {
-        // Ask the generator for the column height (ocean floor so seabed terrain keeps its real height).
+        // 26.x evaluates the density router in whole volumes, so per-point density marching is extremely slow.
+        // Ask the generator for the column height instead (ocean floor so seabed terrain keeps its real height).
         long t0 = System.nanoTime();
         int height = generator.getBaseHeight(blockX, blockZ, Heightmap.Types.OCEAN_FLOOR_WG, heightAccessor, randomState);
-        if (TIMING_LOGS.getAndIncrement() < 8) {
-            Constants.LOG.info("Ecstatic sample timing: height={} us (x={}, z={}, y={})", (System.nanoTime() - t0) / 1000L, blockX, blockZ, height);
-        }
-
-        return sampleWithHeight(generator, randomState, biomeRegistry, blockX, blockZ, height);
-    }
-
-    /** Builds a sample when the column height is already known (e.g. from {@link #sampleHeightGrid}). */
-    public static SurfaceSample sampleWithHeight(
-        ChunkGenerator generator, RandomState randomState, Registry<Biome> biomeRegistry, int blockX, int blockZ, int height
-    ) {
+        long t1 = System.nanoTime();
         BiomeResolver resolver = biomeResolver(generator.getBiomeSource(), randomState);
         Holder<Biome> biomeHolder = resolver.getNoiseBiome(
             QuartPos.fromBlock(blockX), QuartPos.fromBlock(height), QuartPos.fromBlock(blockZ)
         );
+        long t2 = System.nanoTime();
+        if (TIMING_LOGS.getAndIncrement() < 8) {
+            Constants.LOG.info("Ecstatic sample timing: height={} us, biome={} us (x={}, z={}, y={})", (t1 - t0) / 1000L, (t2 - t1) / 1000L, blockX, blockZ, height);
+        }
 
         Biome biome = (Biome)biomeHolder.value();
         int biomeRawId = biomeRegistry.getId(biome);
@@ -133,75 +125,6 @@ public final class SurfaceSampler {
         return new SurfaceSample(height, biomeRawId, colorRgb, hasTrees);
     }
     
-    private static final int BATCH_STEP_Y = 4;
-    private static final int BATCH_ROWS = 8;
-    private static volatile boolean batchFailed;
-
-    /**
-     * Samples the surface height of a count x count grid (index lz * count + lx) with a few large density volumes
-     * instead of one volume per column. Heights are interpolated between vertical steps, so they can differ from
-     * getBaseHeight by a block or two. Returns null when unsupported or on any failure; callers fall back to
-     * per-column sampling.
-     */
-    public static int[] sampleHeightGrid(
-        ChunkGenerator generator, RandomState randomState, LevelHeightAccessor heightAccessor, int originX, int originZ, int spacing, int count
-    ) {
-        if (batchFailed || !(generator instanceof NoiseBasedChunkGenerator noise)) {
-            return null;
-        }
-
-        try {
-            var noiseSettings = noise.generatorSettings().value().noiseSettings().clampToHeightAccessor(heightAccessor);
-            int minY = noiseSettings.minY();
-            int ny = noiseSettings.height() / BATCH_STEP_Y;
-            if (ny < 2) {
-                return null;
-            }
-
-            DensitySampler sampler = finalDensitySampler(generator, randomState);
-            int[] heights = new int[count * count];
-            for (int rowStart = 0; rowStart < count; rowStart += BATCH_ROWS) {
-                int rows = Math.min(BATCH_ROWS, count - rowStart);
-                DensityVolume volume = new DensityVolume(
-                    count, ny, rows, originX, minY, originZ + rowStart * spacing, spacing, BATCH_STEP_Y, spacing
-                );
-                SamplerContext context = SamplerContext.builder().enableCaches().build();
-                try (ScopedDensityBuffer buffer = context.acquireBuffer(volume)) {
-                    sampler.sampleVolume(context, buffer, volume);
-                    for (int z = 0; z < rows; z++) {
-                        for (int x = 0; x < count; x++) {
-                            heights[(rowStart + z) * count + x] = topSolidHeight(buffer, volume, x, z, ny, minY);
-                        }
-                    }
-                }
-            }
-
-            return heights;
-        } catch (Throwable t) {
-            batchFailed = true;
-            Constants.LOG.warn("Ecstatic: batched terrain sampling failed, falling back to per-column sampling", t);
-            return null;
-        }
-    }
-
-    private static int topSolidHeight(DensityBuffer buffer, DensityVolume volume, int x, int z, int ny, int minY) {
-        for (int y = ny - 1; y >= 0; y--) {
-            float density = buffer.get(volume.indexUnchecked(x, y, z));
-            if (density > 0.0F) {
-                int blockY = volume.blockY(y);
-                if (y == ny - 1) {
-                    return blockY + 1;
-                }
-
-                float above = buffer.get(volume.indexUnchecked(x, y + 1, z));
-                float t = density / (density - above);
-                return (int)Math.floor(blockY + t * BATCH_STEP_Y) + 1;
-            }
-        }
-
-        return minY;
-    }
-
     private record SamplerKey(RandomState randomState, DensitySampler sampler) {
     }
 
