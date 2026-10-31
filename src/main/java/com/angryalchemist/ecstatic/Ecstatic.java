@@ -27,6 +27,8 @@ public class Ecstatic {
     private static final int RING_HYSTERESIS_CHUNKS = 4;
     private static volatile MinecraftServer startingServer;
     private static volatile RegionLodCoordinator activeCoordinator;
+    // Bumped on every server start and stop; a startup thread only publishes its coordinator if its generation is still current.
+    private static long serverGeneration;
 
     public static RingConfig currentRingConfig(int clientRenderDistanceChunks) {
         int ring1StartChunks = RingConfig.ring1StartChunks(clientRenderDistanceChunks);
@@ -48,6 +50,7 @@ public class Ecstatic {
             Constants.LOG.warn("Ecstatic dynamic coordinator already starting for this server, skipping duplicate run");
         } else {
             startingServer = server;
+            final long generation = ++serverGeneration;
             Path storageDir = LodStoragePaths.dimensionStorageDir(overworld.getServer().getWorldPath(LevelResource.ROOT), overworld.dimension());
             int workerThreadCount = LodSettingsConfig.get().workerThreadCount();
             ChunkGenerator generator = overworld.getChunkSource().getGenerator();
@@ -57,14 +60,31 @@ public class Ecstatic {
             Thread startupThread = new Thread(
                 () -> {
                     try {
-                        activeCoordinator = new RegionLodCoordinator(
+                        RegionLodCoordinator created = new RegionLodCoordinator(
                             generator, randomState, biomeRegistry, heightAccessor, storageDir, 28, 32, 64, 34, 124, 4, workerThreadCount
                         );
-                        Constants.LOG.info("Ecstatic: LOD coordinator started (storage {})", storageDir);
+                        boolean stale;
+                        synchronized (Ecstatic.class) {
+                            stale = generation != serverGeneration;
+                            if (!stale) {
+                                activeCoordinator = created;
+                            }
+                        }
+
+                        if (stale) {
+                            Constants.LOG.info("Ecstatic: server stopped during LOD startup, shutting the new coordinator down");
+                            created.shutdown();
+                        } else {
+                            Constants.LOG.info("Ecstatic: LOD coordinator started (storage {})", storageDir);
+                        }
                     } catch (Throwable e) {
                         Constants.LOG.error("Ecstatic failed to start the dynamic region coordinator", e);
                     } finally {
-                        startingServer = null;
+                        synchronized (Ecstatic.class) {
+                            if (startingServer == server) {
+                                startingServer = null;
+                            }
+                        }
                     }
                 },
                 "Ecstatic-CoordinatorStartup"
@@ -75,6 +95,11 @@ public class Ecstatic {
     }
 
     public static synchronized void onServerStopping(MinecraftServer server) {
+        serverGeneration++; // invalidates any startup still in progress
+        if (startingServer == server) {
+            startingServer = null;
+        }
+
         RegionLodCoordinator coordinator = activeCoordinator;
         if (coordinator != null) {
             activeCoordinator = null;
