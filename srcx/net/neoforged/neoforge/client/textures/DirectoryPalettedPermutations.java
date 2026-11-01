@@ -1,0 +1,84 @@
+/*
+ * Copyright (c) NeoForged and contributors
+ * SPDX-License-Identifier: LGPL-2.1-only
+ */
+
+package net.neoforged.neoforge.client.textures;
+
+import com.google.common.base.Suppliers;
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.function.Supplier;
+import net.minecraft.client.renderer.texture.atlas.SpriteSource;
+import net.minecraft.client.renderer.texture.atlas.sources.LazyLoadedImage;
+import net.minecraft.client.renderer.texture.atlas.sources.PalettedPermutations;
+import net.minecraft.client.resources.palette.Palette;
+import net.minecraft.client.resources.palette.PaletteMapping;
+import net.minecraft.resources.FileToIdConverter;
+import net.minecraft.resources.Identifier;
+import net.minecraft.server.packs.resources.Resource;
+import net.minecraft.server.packs.resources.ResourceManager;
+import net.neoforged.neoforge.common.NeoForgeMod;
+
+/// An implementation of vanilla's {@link PalettedPermutations} loader that uses a whole directory instead of just a list of contents.
+/// If you wish to use the PalettedPermutations system for something, using this would be preferred as it allows other mods to also utilize your system to its fullest extent.
+///
+/// The problem with vanilla's system is that if Mod A adds a texture and Mod B adds a palette, the game will not recognize the additions of both and won't generate files for Mod A's texture using mod B's palette.
+/// Because Mod A doesn't list Mod B's materials in their atlas JSON, and Mod B doesn't list Mod A's pattern in their atlas JSON, the 2 don't work together.
+///
+/// This system makes it so only the owner of the atlas needs to create a JSON file, all other mods will be supported by default if they put their textures in the proper directory.
+/// 
+/// @param texturePath The base directory used for the textures passed to [PalettedPermutations#textures()], that will be loaded from `textures/<texturePath>/*.png`
+/// @param paletteKey  The palette key from [PalettedPermutations#paletteKey()], that will be loaded from `textures/palettes/<paletteKey>.png`
+/// @param palettePath The base directory used for the values of [PalettedPermutations#permutations()], that will be loaded from `textures/palettes/<palettePath>/*.png`
+public record DirectoryPalettedPermutations(String texturePath, Identifier paletteKey, String palettePath) implements SpriteSource {
+    public static final Identifier ID = Identifier.fromNamespaceAndPath(NeoForgeMod.MOD_ID, "directory_paletted_permutations");
+    public static final MapCodec<DirectoryPalettedPermutations> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
+            Codec.STRING.fieldOf("textures").forGetter(DirectoryPalettedPermutations::texturePath),
+            Identifier.CODEC.fieldOf("palette_key").forGetter(DirectoryPalettedPermutations::paletteKey),
+            Codec.STRING.fieldOf("palettes").forGetter(DirectoryPalettedPermutations::palettePath))
+            .apply(instance, DirectoryPalettedPermutations::new));
+
+    @Override
+    public void run(ResourceManager manager, SpriteSource.Output output) {
+        Map<Identifier, Resource> trimTextures = new HashMap<>();
+
+        FileToIdConverter trimID = new FileToIdConverter(TEXTURE_ID_CONVERTER.prefix() + "/" + texturePath(), TEXTURE_ID_CONVERTER.extension());
+        trimID.listMatchingResources(manager).forEach((identifier, resource) -> {
+            Identifier id = trimID.fileToId(identifier).withPrefix(texturePath() + "/");
+            trimTextures.put(id, resource);
+        });
+
+        Map<String, Identifier> paletteTextures = new HashMap<>();
+
+        FileToIdConverter paletteID = new FileToIdConverter(Palette.ID_CONVERTER.prefix() + "/" + palettePath(), Palette.ID_CONVERTER.extension());
+        paletteID.listMatchingResources(manager).forEach((identifier, _) -> {
+            Identifier id = paletteID.fileToId(identifier).withPrefix(palettePath() + "/");
+            String path = paletteID.fileToId(identifier).getPath();
+            paletteTextures.put(path, id);
+        });
+
+        Supplier<Palette> palette = Suppliers.memoize(() -> PalettedPermutations.loadPaletteEntryFromImage(manager, paletteKey()));
+        Map<String, Supplier<PaletteMapping>> mappedTextures = new HashMap<>();
+        paletteTextures.forEach((name, location) -> mappedTextures.put(name, Suppliers.memoize(() -> PaletteMapping.create(palette.get(), PalettedPermutations.loadPaletteEntryFromImage(manager, location)))));
+
+        for (Map.Entry<Identifier, Resource> trimEntry : trimTextures.entrySet()) {
+            Identifier trimLocation = TEXTURE_ID_CONVERTER.idToFile(trimEntry.getKey());
+
+            LazyLoadedImage lazyloadedimage = new LazyLoadedImage(trimLocation, trimEntry.getValue(), mappedTextures.size());
+
+            for (Map.Entry<String, Supplier<PaletteMapping>> mappedEntry : mappedTextures.entrySet()) {
+                Identifier mappedTrimLocation = trimEntry.getKey().withSuffix("_" + mappedEntry.getKey());
+                output.add(mappedTrimLocation, new PalettedPermutations.PalettedSpriteSupplier(lazyloadedimage, mappedEntry.getValue(), mappedTrimLocation));
+            }
+        }
+    }
+
+    @Override
+    public MapCodec<? extends SpriteSource> codec() {
+        return CODEC;
+    }
+}
