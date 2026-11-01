@@ -4,7 +4,7 @@ public final class RingConfig {
     private final int[] outerBoundaryChunks = new int[6];
     public final int hysteresisChunks;
     
-    public static final int RING_START_MARGIN_CHUNKS = 20;
+    public static final int RING_START_MARGIN_CHUNKS = 4; // how far inside the vanilla render distance LOD may begin (was 20, which drew flat LOD over real chunks)
 
     private static final int DEFAULT_LOD1_WIDTH = 16;
     private static final int DEFAULT_LOD2_WIDTH = 32;
@@ -46,7 +46,9 @@ public final class RingConfig {
     }
 
     public static int ring1StartChunks(int clientRenderDistanceChunks) { // where to start rendering the first LOD
-        return Math.max(2, clientRenderDistanceChunks - RING_START_MARGIN_CHUNKS); 
+        // small render distances get a proportionally small margin so LOD never covers most of the real chunks
+        int margin = Math.min(RING_START_MARGIN_CHUNKS, Math.max(1, clientRenderDistanceChunks / 4));
+        return Math.max(2, clientRenderDistanceChunks - margin);
     }
 
     public int outerBoundary(int level) {
